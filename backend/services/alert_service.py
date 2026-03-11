@@ -103,7 +103,10 @@ class AlertService:
                 metadata=alert.get("metadata"),
                 is_acknowledged=alert.get("is_acknowledged", False),
                 timestamp=alert["timestamp"],
-                created_at=alert["created_at"]
+                created_at=alert["created_at"],
+                status=alert.get("status", "triggered"),
+                acknowledged_at=alert.get("acknowledged_at"),
+                resolved_at=alert.get("resolved_at"),
             )
             for alert in alerts
         ]
@@ -128,7 +131,10 @@ class AlertService:
                 metadata=alert.get("metadata"),
                 is_acknowledged=alert.get("is_acknowledged", False),
                 timestamp=alert["timestamp"],
-                created_at=alert["created_at"]
+                created_at=alert["created_at"],
+                status=alert.get("status", "triggered"),
+                acknowledged_at=alert.get("acknowledged_at"),
+                resolved_at=alert.get("resolved_at"),
             )
             for alert in alerts
         ]
@@ -172,13 +178,16 @@ class AlertService:
 
     async def resolve_alert(self, alert_id: str, resolution_note: Optional[str] = None) -> Optional[AlertResponse]:
         """Resolve an alert and write to audit trail."""
+        now = datetime.utcnow()
         try:
             alert = await self.db.alerts.find_one_and_update(
                 {"_id": ObjectId(alert_id)},
                 {
                     "$set": {
                         "status": "resolved",
-                        "resolved_at": datetime.utcnow(),
+                        "resolved_at": now,
+                        "is_acknowledged": True,
+                        "acknowledged_at": now,
                         "resolution_note": resolution_note,
                     }
                 },

@@ -7,6 +7,7 @@
 import axios from 'axios'
 
 const API_BASE_URL = '/api'
+const INGEST_TOKEN = import.meta.env.VITE_INGEST_TOKEN || ''
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -189,11 +190,15 @@ export const getIngestionStatus = async () => {
 /**
  * Submit a raw GPS packet to ingestion endpoint
  */
-export const ingestRawPacket = async (packet, token = 'hackathon-key') => {
+export const ingestRawPacket = async (packet, token = '') => {
+  const headers = {}
+  const effectiveToken = token || INGEST_TOKEN
+  if (effectiveToken) {
+    headers['X-Ingest-Token'] = effectiveToken
+  }
+
   const response = await api.post('/ingest/raw', packet, {
-    headers: {
-      'X-Ingest-Token': token,
-    },
+    headers,
   })
   return response.data
 }
