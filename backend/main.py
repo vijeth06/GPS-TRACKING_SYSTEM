@@ -224,35 +224,3 @@ if __name__ == "__main__":
         port=8000,
         reload=True
     )
-
-
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """Detailed health check."""
-    return {
-        "status": "healthy",
-        "database": "connected",
-        "websocket_clients": socket_manager.connected_count
-    }
-
-
-# =============================================================================
-# COMBINED ASGI APPLICATION
-# =============================================================================
-
-# Wrap FastAPI with Socket.IO
-socket_app = socketio.ASGIApp(sio, app)
-
-
-# =============================================================================
-# MAIN ENTRY POINT
-# =============================================================================
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:socket_app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
