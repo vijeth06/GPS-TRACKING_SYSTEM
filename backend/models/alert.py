@@ -58,8 +58,10 @@ def create_alert_document(
         "latitude": latitude,
         "longitude": longitude,
         "metadata": metadata,
+        "status": "triggered",
         "is_acknowledged": False,
         "acknowledged_at": None,
+        "resolved_at": None,
         "timestamp": now,
         "created_at": now
     }
@@ -87,8 +89,10 @@ def alert_to_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
         "latitude": doc.get("latitude"),
         "longitude": doc.get("longitude"),
         "metadata": doc.get("metadata"),
+        "status": doc.get("status", "triggered"),
         "is_acknowledged": doc.get("is_acknowledged", False),
         "acknowledged_at": doc.get("acknowledged_at").isoformat() if doc.get("acknowledged_at") else None,
+        "resolved_at": doc.get("resolved_at").isoformat() if doc.get("resolved_at") else None,
         "timestamp": doc.get("timestamp").isoformat() if doc.get("timestamp") else None,
         "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else None
     }

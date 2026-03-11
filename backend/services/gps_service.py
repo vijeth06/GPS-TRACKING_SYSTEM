@@ -21,6 +21,8 @@ from backend.services.socket_manager import socket_manager
 from backend.analytics.movement_analyzer import MovementAnalyzer
 from backend.services.geofence_service import GeofenceService
 from backend.services.alert_service import AlertService
+from backend.services.alert_rules_service import AlertRulesService
+from backend.services.intelligence_service import IntelligenceService
 
 
 class GPSService:
@@ -41,6 +43,8 @@ class GPSService:
         self.movement_analyzer = MovementAnalyzer()
         self.geofence_service = GeofenceService()
         self.alert_service = AlertService()
+        self.alert_rules = AlertRulesService()
+        self.intelligence = IntelligenceService()
     
     async def process_gps_data(self, gps_data: GPSDataInput) -> dict:
         """
@@ -84,12 +88,16 @@ class GPSService:
         
         # 5. Determine movement status
         status = self.movement_analyzer.classify_speed(speed or 0)
+
+        # 5b. Quality score and trip state
+        quality_score = self.intelligence.compute_quality_score(gps_data.accuracy, speed)
+        trip_state = await self.intelligence.update_trip_state(gps_data.device_id, gps_data.timestamp, speed)
         
         # 6. Check for stationary alert
         stationary_alert = await self.movement_analyzer.check_stationary(
             gps_data.device_id, gps_data.latitude, gps_data.longitude, gps_data.timestamp
         )
-        if stationary_alert:
+        if stationary_alert and await self.alert_rules.should_emit_alert(gps_data.device_id, "stationary_alert", 300):
             alert = await self.alert_service.create_alert(
                 device_id=gps_data.device_id,
                 alert_type="stationary_alert",
@@ -97,7 +105,7 @@ class GPSService:
                 message=stationary_alert["message"],
                 latitude=gps_data.latitude,
                 longitude=gps_data.longitude,
-                metadata=stationary_alert
+                metadata={**stationary_alert, "quality_score": quality_score}
             )
             alerts_generated.append(alert)
         
@@ -105,7 +113,7 @@ class GPSService:
         speed_alert = self.movement_analyzer.check_speed_violation(
             gps_data.device_id, speed or 0, gps_data.latitude, gps_data.longitude
         )
-        if speed_alert:
+        if speed_alert and await self.alert_rules.should_emit_alert(gps_data.device_id, "speed_alert", 120):
             alert = await self.alert_service.create_alert(
                 device_id=gps_data.device_id,
                 alert_type="speed_alert",
@@ -113,7 +121,7 @@ class GPSService:
                 message=speed_alert["message"],
                 latitude=gps_data.latitude,
                 longitude=gps_data.longitude,
-                metadata=speed_alert
+                metadata={**speed_alert, "quality_score": quality_score}
             )
             alerts_generated.append(alert)
         
@@ -122,7 +130,7 @@ class GPSService:
             gps_data.latitude, gps_data.longitude
         )
         for violation in violations:
-            if violation["fence_type"] == "restricted":
+            if violation["fence_type"] == "restricted" and await self.alert_rules.should_emit_alert(gps_data.device_id, "geofence_alert", 180):
                 alert = await self.alert_service.create_alert(
                     device_id=gps_data.device_id,
                     alert_type="geofence_alert",
@@ -130,7 +138,7 @@ class GPSService:
                     message=f"Device entered restricted zone: {violation['name']}",
                     latitude=gps_data.latitude,
                     longitude=gps_data.longitude,
-                    metadata=violation
+                    metadata={**violation, "quality_score": quality_score}
                 )
                 alerts_generated.append(alert)
         
@@ -154,6 +162,8 @@ class GPSService:
             "location_id": location_id,
             "speed": speed,
             "status": status,
+            "quality_score": quality_score,
+            "trip_state": trip_state,
             "alerts": alerts_generated
         }
     

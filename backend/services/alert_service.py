@@ -138,7 +138,13 @@ class AlertService:
         try:
             alert = await self.db.alerts.find_one_and_update(
                 {"_id": ObjectId(alert_id)},
-                {"$set": {"is_acknowledged": True, "acknowledged_at": datetime.utcnow()}},
+                {
+                    "$set": {
+                        "is_acknowledged": True,
+                        "status": "acknowledged",
+                        "acknowledged_at": datetime.utcnow(),
+                    }
+                },
                 return_document=True
             )
         except:
@@ -158,7 +164,57 @@ class AlertService:
             metadata=alert.get("metadata"),
             is_acknowledged=alert.get("is_acknowledged", False),
             timestamp=alert["timestamp"],
-            created_at=alert["created_at"]
+            created_at=alert["created_at"],
+            status=alert.get("status", "acknowledged"),
+            acknowledged_at=alert.get("acknowledged_at"),
+            resolved_at=alert.get("resolved_at"),
+        )
+
+    async def resolve_alert(self, alert_id: str, resolution_note: Optional[str] = None) -> Optional[AlertResponse]:
+        """Resolve an alert and write to audit trail."""
+        try:
+            alert = await self.db.alerts.find_one_and_update(
+                {"_id": ObjectId(alert_id)},
+                {
+                    "$set": {
+                        "status": "resolved",
+                        "resolved_at": datetime.utcnow(),
+                        "resolution_note": resolution_note,
+                    }
+                },
+                return_document=True,
+            )
+        except:
+            return None
+
+        if not alert:
+            return None
+
+        await self.db.audit_logs.insert_one(
+            {
+                "entity_type": "alert",
+                "entity_id": str(alert["_id"]),
+                "action": "resolved",
+                "note": resolution_note,
+                "created_at": datetime.utcnow(),
+            }
+        )
+
+        return AlertResponse(
+            id=str(alert["_id"]),
+            device_id=alert["device_id"],
+            alert_type=alert["alert_type"],
+            severity=alert["severity"],
+            message=alert["message"],
+            latitude=alert.get("latitude"),
+            longitude=alert.get("longitude"),
+            metadata=alert.get("metadata"),
+            is_acknowledged=alert.get("is_acknowledged", False),
+            timestamp=alert["timestamp"],
+            created_at=alert["created_at"],
+            status=alert.get("status", "resolved"),
+            acknowledged_at=alert.get("acknowledged_at"),
+            resolved_at=alert.get("resolved_at"),
         )
     
     async def get_alert_statistics(self) -> Dict[str, Any]:

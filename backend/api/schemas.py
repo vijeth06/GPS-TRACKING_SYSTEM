@@ -156,6 +156,9 @@ class AlertResponse(BaseModel):
     is_acknowledged: bool
     timestamp: datetime
     created_at: datetime
+    status: Optional[str] = "triggered"
+    acknowledged_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -164,6 +167,11 @@ class AlertResponse(BaseModel):
 class AlertAcknowledge(BaseModel):
     """Schema for acknowledging an alert"""
     alert_id: str
+
+
+class AlertResolve(BaseModel):
+    """Schema for resolving an alert"""
+    resolution_note: Optional[str] = None
 
 
 # =============================================================================
@@ -220,9 +228,70 @@ class LocationUpdate(BaseModel):
 
 class AlertUpdate(BaseModel):
     """Real-time alert update for WebSocket"""
-    id: int
+    id: str
     device_id: str
     alert_type: str
     severity: str
     message: str
     timestamp: datetime
+
+
+# =============================================================================
+# INGESTION / OPS / GEOSERVER SCHEMAS
+# =============================================================================
+
+class RawGPSPacket(BaseModel):
+    """Raw packet for external port/stream ingestion."""
+    device_id: str = Field(..., min_length=1, max_length=64)
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    timestamp: datetime
+    speed: Optional[float] = Field(None, ge=0)
+    heading: Optional[float] = Field(None, ge=0, le=360)
+    accuracy: Optional[float] = Field(None, ge=0)
+    source: Optional[str] = Field("stream", max_length=64)
+
+
+class IngestionResult(BaseModel):
+    accepted: bool
+    deduplicated: bool = False
+    reason: Optional[str] = None
+    packet_hash: Optional[str] = None
+
+
+class IngestionStatus(BaseModel):
+    queue_size: int
+    processed_count: int
+    rejected_count: int
+    dedup_count: int
+    worker_running: bool
+
+
+class GeoserverLayerInfo(BaseModel):
+    layer_name: str
+    wfs_enabled: bool = True
+    wms_enabled: bool = True
+    last_synced_at: Optional[datetime] = None
+    feature_count: int = 0
+
+
+class GeoserverSyncResult(BaseModel):
+    layers: List[GeoserverLayerInfo]
+    total_features_imported: int
+    imported_geofences: int
+
+
+class OpsSnapshot(BaseModel):
+    total_devices: int
+    online_devices: int
+    delayed_devices: int
+    active_alerts: int
+    packets_last_minute: int
+    packet_error_rate: float
+    generated_at: datetime
+
+
+class DemoScenarioResult(BaseModel):
+    scenario: str
+    success: bool
+    details: str

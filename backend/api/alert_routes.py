@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from backend.api.schemas import AlertResponse, AlertAcknowledge
+from backend.api.schemas import AlertResponse, AlertResolve
 from backend.services.alert_service import AlertService
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
@@ -92,6 +92,16 @@ async def acknowledge_alert(alert_id: str):
     if not alert:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
     
+    return alert
+
+
+@router.post("/{alert_id}/resolve", response_model=AlertResponse, summary="Resolve alert")
+async def resolve_alert(alert_id: str, payload: AlertResolve):
+    """Resolve an alert and store lifecycle audit information."""
+    alert_service = AlertService()
+    alert = await alert_service.resolve_alert(alert_id, resolution_note=payload.resolution_note)
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
     return alert
 
 

@@ -25,7 +25,7 @@ MONGODB_URL = os.getenv(
 DATABASE_NAME = os.getenv("DATABASE_NAME", "Anna_Univ")
 
 # Async MongoDB client (for FastAPI async operations)
-async_client: AsyncIOMotorClient = None
+async_client = None
 # Sync MongoDB client (for synchronous operations)
 sync_client: MongoClient = None
 
@@ -98,8 +98,27 @@ async def create_indexes():
     await db.alerts.create_index("device_id")
     await db.alerts.create_index("alert_type")
     await db.alerts.create_index("is_acknowledged")
+    await db.alerts.create_index("status")
     await db.alerts.create_index("timestamp")
     await db.alerts.create_index([("device_id", 1), ("timestamp", -1)])
+
+    # Raw packet ingestion indexes
+    await db.raw_packets.create_index("packet_hash", unique=True)
+    await db.raw_packets.create_index("status")
+    await db.raw_packets.create_index("created_at")
+
+    # Alert rule and audit indexes
+    await db.alert_rule_state.create_index("key", unique=True)
+    await db.audit_logs.create_index("created_at")
+    await db.audit_logs.create_index([("entity_type", 1), ("entity_id", 1)])
+
+    # Trip intelligence indexes
+    await db.trips.create_index("device_id")
+    await db.trips.create_index("status")
+    await db.trips.create_index([("device_id", 1), ("status", 1)])
+
+    # GeoServer layer cache indexes
+    await db.layer_cache.create_index("layer_name", unique=True)
 
 
 async def close_db():

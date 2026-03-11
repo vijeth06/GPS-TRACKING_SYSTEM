@@ -26,6 +26,7 @@ import MapView from '../components/MapView'
 import DeviceList from '../components/DeviceList'
 import AlertPanel from '../components/AlertPanel'
 import AnalyticsDashboard from '../components/AnalyticsDashboard'
+import WorkflowPanel from '../components/WorkflowPanel'
 import { getDevices, getAlerts, getGeofences, getSystemAnalytics } from '../services/api'
 import socketService from '../services/socket'
 
@@ -278,6 +279,11 @@ function Dashboard() {
                 alerts={alerts}
                 onAcknowledge={handleAcknowledgeAlert}
               />
+            </div>
+
+            {/* Workflow Controls */}
+            <div className="bg-white rounded-lg shadow-sm p-4 max-h-[260px] overflow-auto custom-scrollbar">
+              <WorkflowPanel />
             </div>
           </div>
         </div>

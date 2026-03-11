@@ -20,10 +20,10 @@ A comprehensive GPS tracking platform that receives continuous GPS streams, visu
     ┌────┴────┐
     │         │
     ▼         ▼
-┌───────┐ ┌──────────────────┐
-│PostGIS│ │Processing Engine │ ─── Movement analysis, geofence detection
-│  DB   │ │  (Analytics)     │
-└───────┘ └─────────┬────────┘
+┌──────────┐ ┌──────────────────┐
+│ MongoDB  │ │Processing Engine │ ─── Movement analysis, geofence detection
+│ (GeoJSON)│ │  (Analytics)     │
+└──────────┘ └─────────┬────────┘
                     │
                     │ WebSocket (device_location_update, alert_update)
                     ▼
@@ -46,15 +46,18 @@ A comprehensive GPS tracking platform that receives continuous GPS streams, visu
 ### Advanced Features
 - **Multiple Device Support**: Track 5-10+ devices simultaneously
 - **WebSocket Updates**: Instant map updates without page refresh
-- **PostGIS Spatial Queries**: Efficient geographic computations
+- **GeoJSON Spatial Queries**: Efficient geographic computations with 2dsphere indexes
 - **Heatmap Data**: Frequently visited areas analysis
+- **Queue-based Ingestion**: Raw stream ingestion with deduplication and validation
+- **Ops Snapshot**: Live operational health metrics for monitoring
+- **GeoServer Sync Hooks**: WFS/WMS layer integration endpoints
 
 ## 🛠️ Technology Stack
 
 ### Backend
 - **Python 3.10+** with **FastAPI**
-- **PostgreSQL 14+** with **PostGIS** extension
-- **SQLAlchemy** ORM with **GeoAlchemy2**
+- **MongoDB Atlas / MongoDB 6+** with **Motor + PyMongo**
+- **GeoJSON + 2dsphere indexes** for spatial processing
 - **Socket.IO** for WebSockets
 
 ### Frontend
@@ -131,28 +134,15 @@ gps-tracking-system/
 
 1. **Python 3.10+**
 2. **Node.js 18+**
-3. **PostgreSQL 14+** with PostGIS extension
+3. **MongoDB Atlas connection string** (or local MongoDB)
 
 ### Step 1: Database Setup
 
-1. Install PostgreSQL and PostGIS:
-   ```bash
-   # Windows (using chocolatey)
-   choco install postgresql14
-   
-   # Or download from https://www.postgresql.org/download/
-   ```
-
-2. Create database and enable PostGIS:
-   ```sql
-   CREATE DATABASE gps_tracking;
-   \c gps_tracking
-   CREATE EXTENSION IF NOT EXISTS postgis;
-   ```
-
-3. Run the schema script:
-   ```bash
-   psql -U postgres -d gps_tracking -f backend/database/schema.sql
+1. Create a MongoDB Atlas cluster (or run local MongoDB).
+2. Configure `backend/.env` using `backend/.env.example`:
+   ```env
+   MONGODB_URL=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/Anna_Univ
+   DATABASE_NAME=Anna_Univ
    ```
 
 ### Step 2: Backend Setup
@@ -186,7 +176,10 @@ gps-tracking-system/
 
 5. Start the backend server:
    ```bash
-   uvicorn main:socket_app --host 0.0.0.0 --port 8000 --reload
+   # From project root on Windows PowerShell
+   $env:PYTHONPATH="d:\Anna\gps-tracking-system"
+   cd backend
+   python -m uvicorn main:socket_app --host 0.0.0.0 --port 8000 --reload
    ```
 
    The API will be available at `http://localhost:8000`
@@ -240,6 +233,7 @@ gps-tracking-system/
 - `GET /api/alerts` - Get alerts (with filters)
 - `GET /api/alerts/unacknowledged` - Get unacknowledged alerts
 - `POST /api/alerts/{id}/acknowledge` - Acknowledge an alert
+- `POST /api/alerts/{id}/resolve` - Resolve an alert
 
 ### Geofences
 - `GET /api/geofences` - Get all geofences
@@ -251,6 +245,15 @@ gps-tracking-system/
 - `GET /api/analytics/system` - System-wide analytics
 - `GET /api/analytics/speed/{id}` - Speed over time data
 - `GET /api/analytics/heatmap` - Location frequency data
+
+### Workflow / Ops
+- `GET /api/ops/snapshot` - Operational metrics snapshot
+- `GET /api/ingest/status` - Ingestion worker queue status
+- `POST /api/ingest/raw` - Ingest raw packet (requires `X-Ingest-Token`)
+- `GET /api/geoserver/layers` - List configured GeoServer layers
+- `POST /api/geoserver/sync` - Sync WFS layers to geofences
+- `POST /api/demo/geofence-violation` - Seed demo geofence scenario
+- `POST /api/demo/stationary?device_id=TRK101` - Seed demo stationary scenario
 
 ## 🌐 WebSocket Events
 
@@ -297,7 +300,12 @@ gps-tracking-system/
 ### Environment Variables (backend/.env)
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/gps_tracking
+MONGODB_URL=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/Anna_Univ
+DATABASE_NAME=Anna_Univ
+INGEST_API_KEY=hackathon-key
+GEOSERVER_WFS_URL=
+GEOSERVER_WMS_URL=
+GEOSERVER_LAYER_NAMES=
 DEBUG=True
 CORS_ORIGINS=http://localhost:5173
 SPEED_VIOLATION_THRESHOLD=120
@@ -334,9 +342,9 @@ The schema includes sample geofences near Coimbatore, India:
 - [ ] Device playback feature
 - [ ] Multi-device filtering
 - [ ] Route history viewer
-- [ ] Redis caching for alerts
-- [ ] Docker containerization
-- [ ] Mobile app support
+- [ ] Route replay UI with timeline scrubber
+- [ ] GeoServer layer style controls in map UI
+- [ ] Device authentication and per-device token onboarding
 
 ## 📝 License
 

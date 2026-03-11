@@ -29,8 +29,13 @@ from backend.api.gps_routes import router as gps_router
 from backend.api.alert_routes import router as alert_router
 from backend.api.geofence_routes import router as geofence_router
 from backend.api.analytics_routes import router as analytics_router
+from backend.api.ingest_routes import router as ingest_router
+from backend.api.geoserver_routes import router as geoserver_router
+from backend.api.ops_routes import router as ops_router
+from backend.api.demo_routes import router as demo_router
 from backend.database.connection import init_db, close_db, get_database
 from backend.services.socket_manager import socket_manager
+from backend.services.ingestion_service import ingestion_service
 
 
 # =============================================================================
@@ -98,11 +103,15 @@ async def lifespan(app: FastAPI):
     
     # Initialize sample data if needed
     await init_sample_data()
+
+    # Start queue worker for raw stream ingestion
+    await ingestion_service.start_worker()
     
     yield
     
     # Shutdown
     print("Shutting down GPS Tracking System...")
+    await ingestion_service.stop_worker()
     await close_db()
 
 
@@ -171,6 +180,10 @@ app.include_router(gps_router, prefix="/api")
 app.include_router(alert_router, prefix="/api")
 app.include_router(geofence_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(ingest_router, prefix="/api")
+app.include_router(geoserver_router, prefix="/api")
+app.include_router(ops_router, prefix="/api")
+app.include_router(demo_router, prefix="/api")
 
 
 # =============================================================================

@@ -80,6 +80,16 @@ export const acknowledgeAlert = async (alertId) => {
   return response.data
 }
 
+/**
+ * Resolve an alert
+ */
+export const resolveAlert = async (alertId, resolutionNote = '') => {
+  const response = await api.post(`/alerts/${alertId}/resolve`, {
+    resolution_note: resolutionNote,
+  })
+  return response.data
+}
+
 // =============================================================================
 // GEOFENCE ENDPOINTS
 // =============================================================================
@@ -153,6 +163,72 @@ export const getHeatmapData = async (startTime, endTime) => {
   if (endTime) params.end_time = endTime.toISOString()
   
   const response = await api.get('/analytics/heatmap', { params })
+  return response.data
+}
+
+// =============================================================================
+// WORKFLOW / OPS ENDPOINTS
+// =============================================================================
+
+/**
+ * Get operational snapshot metrics
+ */
+export const getOpsSnapshot = async () => {
+  const response = await api.get('/ops/snapshot')
+  return response.data
+}
+
+/**
+ * Get ingestion worker status
+ */
+export const getIngestionStatus = async () => {
+  const response = await api.get('/ingest/status')
+  return response.data
+}
+
+/**
+ * Submit a raw GPS packet to ingestion endpoint
+ */
+export const ingestRawPacket = async (packet, token = 'hackathon-key') => {
+  const response = await api.post('/ingest/raw', packet, {
+    headers: {
+      'X-Ingest-Token': token,
+    },
+  })
+  return response.data
+}
+
+/**
+ * List GeoServer layers configured in backend
+ */
+export const getGeoserverLayers = async () => {
+  const response = await api.get('/geoserver/layers')
+  return response.data
+}
+
+/**
+ * Trigger GeoServer WFS sync to geofences
+ */
+export const syncGeoserverLayers = async () => {
+  const response = await api.post('/geoserver/sync')
+  return response.data
+}
+
+/**
+ * Trigger demo geofence violation setup
+ */
+export const triggerDemoGeofence = async () => {
+  const response = await api.post('/demo/geofence-violation')
+  return response.data
+}
+
+/**
+ * Trigger demo stationary behavior setup
+ */
+export const triggerDemoStationary = async (deviceId = 'TRK101') => {
+  const response = await api.post('/demo/stationary', null, {
+    params: { device_id: deviceId },
+  })
   return response.data
 }
 
