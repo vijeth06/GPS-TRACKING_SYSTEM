@@ -9,11 +9,13 @@ Endpoints:
     DELETE /geofences/{id} - Delete a geofence
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List
 
 from backend.api.schemas import GeofenceCreate, GeofenceResponse, CoordinatePoint
 from backend.services.geofence_service import GeofenceService
+from backend.services.auth_dependencies import require_roles
+from backend.services.auth_service import UserRole
 
 router = APIRouter(prefix="/geofences", tags=["Geofences"])
 
@@ -57,7 +59,10 @@ async def get_geofence(geofence_id: str):
 
 
 @router.post("", response_model=GeofenceResponse, summary="Create geofence")
-async def create_geofence(geofence_data: GeofenceCreate):
+async def create_geofence(
+    geofence_data: GeofenceCreate,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+):
     """
     Create a new geofence.
     
@@ -77,7 +82,10 @@ async def create_geofence(geofence_data: GeofenceCreate):
 
 
 @router.put("/{geofence_id}/toggle", response_model=GeofenceResponse, summary="Toggle geofence")
-async def toggle_geofence(geofence_id: str):
+async def toggle_geofence(
+    geofence_id: str,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+):
     """
     Toggle geofence active status.
     
@@ -97,7 +105,10 @@ async def toggle_geofence(geofence_id: str):
 
 
 @router.delete("/{geofence_id}", summary="Delete geofence")
-async def delete_geofence(geofence_id: str):
+async def delete_geofence(
+    geofence_id: str,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN]))
+):
     """
     Delete a geofence.
     

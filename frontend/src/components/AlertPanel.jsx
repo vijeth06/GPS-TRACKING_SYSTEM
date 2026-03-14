@@ -11,9 +11,11 @@ import {
   Gauge, 
   Clock,
   Check,
-  XCircle 
+  UserCheck,
+  ChevronUp,
+  CheckCircle2,
 } from 'lucide-react'
-import { acknowledgeAlert } from '../services/api'
+import { acknowledgeAlert, assignAlert, escalateAlert, resolveAlert } from '../services/api'
 
 // Alert type configurations
 const ALERT_CONFIG = {
@@ -67,14 +69,68 @@ function formatTimestamp(timestamp) {
   return date.toLocaleDateString()
 }
 
-function AlertPanel({ alerts, onAcknowledge }) {
+function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, selectedAlertId = '', onSelectAlert }) {
+  const [busyId, setBusyId] = React.useState('')
+  const [assignees, setAssignees] = React.useState({})
+
+  const canOperate = role === 'admin' || role === 'operator'
+
+  const emitChange = (alert) => {
+    if (onAlertChanged) {
+      onAlertChanged(alert)
+    }
+  }
+
   const handleAcknowledge = async (alertId, e) => {
     e.stopPropagation()
+    setBusyId(alertId)
     try {
-      await acknowledgeAlert(alertId)
-      onAcknowledge(alertId)
+      const updated = await acknowledgeAlert(alertId)
+      emitChange(updated)
     } catch (error) {
       console.error('Error acknowledging alert:', error)
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  const handleAssign = async (alert, e) => {
+    e.stopPropagation()
+    setBusyId(alert.id)
+    try {
+      const assignee = (assignees[alert.id] || '').trim() || username
+      const updated = await assignAlert(alert.id, assignee, 'Assigned from alert panel')
+      emitChange(updated)
+    } catch (error) {
+      console.error('Error assigning alert:', error)
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  const handleEscalate = async (alertId, e) => {
+    e.stopPropagation()
+    setBusyId(alertId)
+    try {
+      const updated = await escalateAlert(alertId, 'Escalated from alert panel')
+      emitChange(updated)
+    } catch (error) {
+      console.error('Error escalating alert:', error)
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  const handleResolve = async (alertId, e) => {
+    e.stopPropagation()
+    setBusyId(alertId)
+    try {
+      const updated = await resolveAlert(alertId, 'Resolved from alert panel')
+      emitChange(updated)
+    } catch (error) {
+      console.error('Error resolving alert:', error)
+    } finally {
+      setBusyId('')
     }
   }
 
@@ -97,10 +153,13 @@ function AlertPanel({ alerts, onAcknowledge }) {
         return (
           <div
             key={alert.id}
+            onClick={() => onSelectAlert && onSelectAlert(alert)}
             className={`
               p-3 rounded-lg border-l-4 transition-all duration-200
               ${config.borderColor} ${config.bgColor}
               ${alert.is_acknowledged ? 'opacity-60' : ''}
+              ${selectedAlertId === alert.id ? 'ring-2 ring-blue-500' : ''}
+              ${onSelectAlert ? 'cursor-pointer' : ''}
             `}
           >
             <div className="flex items-start justify-between">
@@ -125,10 +184,11 @@ function AlertPanel({ alerts, onAcknowledge }) {
               </div>
 
               {/* Acknowledge button */}
-              {!alert.is_acknowledged && (
+              {!alert.is_acknowledged && canOperate && (
                 <button
                   onClick={(e) => handleAcknowledge(alert.id, e)}
-                  className="p-1 hover:bg-white rounded transition-colors"
+                  disabled={busyId === alert.id}
+                  className="p-1 hover:bg-white rounded transition-colors disabled:opacity-50"
                   title="Acknowledge"
                 >
                   <Check className="w-4 h-4 text-green-600" />
@@ -138,6 +198,52 @@ function AlertPanel({ alerts, onAcknowledge }) {
                 <Check className="w-4 h-4 text-gray-400" />
               )}
             </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 uppercase">
+                {alert.status || 'triggered'}
+              </span>
+              <span className="text-[11px] px-2 py-0.5 rounded bg-orange-100 text-orange-700">
+                Esc L{alert.escalation_level || 0}
+              </span>
+              {alert.assigned_to && (
+                <span className="text-[11px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                  {alert.assigned_to}
+                </span>
+              )}
+            </div>
+
+            {canOperate && alert.status !== 'resolved' && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <input
+                  value={assignees[alert.id] || ''}
+                  onChange={(e) => setAssignees((prev) => ({ ...prev, [alert.id]: e.target.value }))}
+                  placeholder="Assign to"
+                  className="text-xs px-2 py-1 rounded border border-gray-200 bg-white"
+                />
+                <button
+                  onClick={(e) => handleAssign(alert, e)}
+                  disabled={busyId === alert.id}
+                  className="text-xs px-2 py-1 rounded bg-blue-600 text-white disabled:opacity-50 flex items-center gap-1"
+                >
+                  <UserCheck className="w-3 h-3" /> Assign
+                </button>
+                <button
+                  onClick={(e) => handleEscalate(alert.id, e)}
+                  disabled={busyId === alert.id}
+                  className="text-xs px-2 py-1 rounded bg-amber-600 text-white disabled:opacity-50 flex items-center gap-1"
+                >
+                  <ChevronUp className="w-3 h-3" /> Escalate
+                </button>
+                <button
+                  onClick={(e) => handleResolve(alert.id, e)}
+                  disabled={busyId === alert.id}
+                  className="text-xs px-2 py-1 rounded bg-emerald-600 text-white disabled:opacity-50 flex items-center gap-1"
+                >
+                  <CheckCircle2 className="w-3 h-3" /> Resolve
+                </button>
+              </div>
+            )}
           </div>
         )
       })}

@@ -9,14 +9,21 @@ Endpoints:
     GET /device/{id}/trail - Get device movement history
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from datetime import datetime, timedelta
 from typing import List, Optional
 
 from backend.api.schemas import (
-    GPSDataInput, GPSDataResponse, DeviceResponse, 
-    DeviceWithLocation, DeviceTrailResponse, TrailPoint
+    GPSDataInput,
+    GPSDataResponse,
+    DeviceWithLocation,
+    DeviceTrailResponse,
+    DeviceOnboardRequest,
+    DeviceCredentialResponse,
+    DeviceCredentialStatusResponse,
 )
+from backend.services.auth_dependencies import require_roles
+from backend.services.auth_service import UserRole
 from backend.services.gps_service import GPSService
 from backend.services.device_service import DeviceService
 
@@ -80,6 +87,63 @@ async def get_device(device_id: str):
     if not device:
         raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
     return device
+
+
+@router.post(
+    "/devices/onboard",
+    response_model=DeviceCredentialResponse,
+    summary="Onboard device and issue API key",
+)
+async def onboard_device(
+    payload: DeviceOnboardRequest,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR])),
+):
+    """Provision device credentials and return API key once."""
+    _ = current_user
+    device_service = DeviceService()
+    result = await device_service.onboard_device(
+        device_id=payload.device_id,
+        device_name=payload.device_name,
+        device_type=payload.device_type or "vehicle",
+    )
+    return DeviceCredentialResponse(**result)
+
+
+@router.post(
+    "/devices/{device_id}/credentials/rotate",
+    response_model=DeviceCredentialResponse,
+    summary="Rotate device API key",
+)
+async def rotate_device_credential(
+    device_id: str,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR])),
+):
+    """Rotate a device API key and return new key once."""
+    _ = current_user
+    device_service = DeviceService()
+    try:
+        result = await device_service.rotate_device_api_key(device_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return DeviceCredentialResponse(**result)
+
+
+@router.get(
+    "/devices/{device_id}/credentials/status",
+    response_model=DeviceCredentialStatusResponse,
+    summary="Get device credential status",
+)
+async def get_device_credential_status(
+    device_id: str,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR, UserRole.VIEWER])),
+):
+    """Return whether the device has active credentials without exposing secrets."""
+    _ = current_user
+    device_service = DeviceService()
+    status = await device_service.get_device_credential_status(device_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+    return DeviceCredentialStatusResponse(**status)
 
 
 @router.get("/device/{device_id}/trail", response_model=DeviceTrailResponse, summary="Get device trail")

@@ -22,6 +22,15 @@ class AlertService:
     
     def __init__(self):
         self.db = get_database()
+
+    @staticmethod
+    def _escalate_severity(current: str) -> str:
+        order = [AlertSeverity.LOW, AlertSeverity.MEDIUM, AlertSeverity.HIGH, AlertSeverity.CRITICAL]
+        try:
+            idx = order.index(current)
+        except ValueError:
+            return AlertSeverity.MEDIUM
+        return order[min(idx + 1, len(order) - 1)]
     
     async def create_alert(
         self,
@@ -107,6 +116,12 @@ class AlertService:
                 status=alert.get("status", "triggered"),
                 acknowledged_at=alert.get("acknowledged_at"),
                 resolved_at=alert.get("resolved_at"),
+                assigned_to=alert.get("assigned_to"),
+                assigned_at=alert.get("assigned_at"),
+                assigned_by=alert.get("assigned_by"),
+                escalation_level=alert.get("escalation_level", 0),
+                escalated_at=alert.get("escalated_at"),
+                escalation_due_at=alert.get("escalation_due_at"),
             )
             for alert in alerts
         ]
@@ -135,9 +150,151 @@ class AlertService:
                 status=alert.get("status", "triggered"),
                 acknowledged_at=alert.get("acknowledged_at"),
                 resolved_at=alert.get("resolved_at"),
+                assigned_to=alert.get("assigned_to"),
+                assigned_at=alert.get("assigned_at"),
+                assigned_by=alert.get("assigned_by"),
+                escalation_level=alert.get("escalation_level", 0),
+                escalated_at=alert.get("escalated_at"),
+                escalation_due_at=alert.get("escalation_due_at"),
             )
             for alert in alerts
         ]
+
+    async def assign_alert(
+        self,
+        alert_id: str,
+        assigned_to: str,
+        assigned_by: str,
+        assignment_note: Optional[str] = None,
+    ) -> Optional[AlertResponse]:
+        """Assign alert to an operator and track assignment audit."""
+        now = datetime.utcnow()
+        try:
+            alert = await self.db.alerts.find_one_and_update(
+                {"_id": ObjectId(alert_id)},
+                {
+                    "$set": {
+                        "assigned_to": assigned_to,
+                        "assigned_by": assigned_by,
+                        "assigned_at": now,
+                        "status": "assigned",
+                    }
+                },
+                return_document=True,
+            )
+        except:
+            return None
+
+        if not alert:
+            return None
+
+        await self.db.audit_logs.insert_one(
+            {
+                "entity_type": "alert",
+                "entity_id": str(alert["_id"]),
+                "action": "assigned",
+                "assigned_to": assigned_to,
+                "assigned_by": assigned_by,
+                "note": assignment_note,
+                "created_at": now,
+            }
+        )
+
+        return AlertResponse(
+            id=str(alert["_id"]),
+            device_id=alert["device_id"],
+            alert_type=alert["alert_type"],
+            severity=alert["severity"],
+            message=alert["message"],
+            latitude=alert.get("latitude"),
+            longitude=alert.get("longitude"),
+            metadata=alert.get("metadata"),
+            is_acknowledged=alert.get("is_acknowledged", False),
+            timestamp=alert["timestamp"],
+            created_at=alert["created_at"],
+            status=alert.get("status", "assigned"),
+            acknowledged_at=alert.get("acknowledged_at"),
+            resolved_at=alert.get("resolved_at"),
+            assigned_to=alert.get("assigned_to"),
+            assigned_at=alert.get("assigned_at"),
+            assigned_by=alert.get("assigned_by"),
+            escalation_level=alert.get("escalation_level", 0),
+            escalated_at=alert.get("escalated_at"),
+            escalation_due_at=alert.get("escalation_due_at"),
+        )
+
+    async def escalate_alert(
+        self,
+        alert_id: str,
+        escalated_by: str,
+        escalation_note: Optional[str] = None,
+    ) -> Optional[AlertResponse]:
+        """Escalate alert severity and escalation level."""
+        try:
+            existing = await self.db.alerts.find_one({"_id": ObjectId(alert_id)})
+        except:
+            return None
+
+        if not existing:
+            return None
+
+        now = datetime.utcnow()
+        next_level = int(existing.get("escalation_level", 0)) + 1
+        next_severity = self._escalate_severity(existing.get("severity", AlertSeverity.MEDIUM))
+
+        try:
+            alert = await self.db.alerts.find_one_and_update(
+                {"_id": ObjectId(alert_id)},
+                {
+                    "$set": {
+                        "escalation_level": next_level,
+                        "escalated_at": now,
+                        "severity": next_severity,
+                        "status": "escalated",
+                    }
+                },
+                return_document=True,
+            )
+        except:
+            return None
+
+        if not alert:
+            return None
+
+        await self.db.audit_logs.insert_one(
+            {
+                "entity_type": "alert",
+                "entity_id": str(alert["_id"]),
+                "action": "escalated",
+                "escalation_level": next_level,
+                "escalated_by": escalated_by,
+                "note": escalation_note,
+                "created_at": now,
+            }
+        )
+
+        return AlertResponse(
+            id=str(alert["_id"]),
+            device_id=alert["device_id"],
+            alert_type=alert["alert_type"],
+            severity=alert["severity"],
+            message=alert["message"],
+            latitude=alert.get("latitude"),
+            longitude=alert.get("longitude"),
+            metadata=alert.get("metadata"),
+            is_acknowledged=alert.get("is_acknowledged", False),
+            timestamp=alert["timestamp"],
+            created_at=alert["created_at"],
+            status=alert.get("status", "escalated"),
+            acknowledged_at=alert.get("acknowledged_at"),
+            resolved_at=alert.get("resolved_at"),
+            assigned_to=alert.get("assigned_to"),
+            assigned_at=alert.get("assigned_at"),
+            assigned_by=alert.get("assigned_by"),
+            escalation_level=alert.get("escalation_level", 0),
+            escalated_at=alert.get("escalated_at"),
+            escalation_due_at=alert.get("escalation_due_at"),
+        )
     
     async def acknowledge_alert(self, alert_id: str) -> Optional[AlertResponse]:
         """Acknowledge an alert."""
@@ -174,6 +331,12 @@ class AlertService:
             status=alert.get("status", "acknowledged"),
             acknowledged_at=alert.get("acknowledged_at"),
             resolved_at=alert.get("resolved_at"),
+            assigned_to=alert.get("assigned_to"),
+            assigned_at=alert.get("assigned_at"),
+            assigned_by=alert.get("assigned_by"),
+            escalation_level=alert.get("escalation_level", 0),
+            escalated_at=alert.get("escalated_at"),
+            escalation_due_at=alert.get("escalation_due_at"),
         )
 
     async def resolve_alert(self, alert_id: str, resolution_note: Optional[str] = None) -> Optional[AlertResponse]:
@@ -224,6 +387,12 @@ class AlertService:
             status=alert.get("status", "resolved"),
             acknowledged_at=alert.get("acknowledged_at"),
             resolved_at=alert.get("resolved_at"),
+            assigned_to=alert.get("assigned_to"),
+            assigned_at=alert.get("assigned_at"),
+            assigned_by=alert.get("assigned_by"),
+            escalation_level=alert.get("escalation_level", 0),
+            escalated_at=alert.get("escalated_at"),
+            escalation_due_at=alert.get("escalation_due_at"),
         )
     
     async def get_alert_statistics(self) -> Dict[str, Any]:

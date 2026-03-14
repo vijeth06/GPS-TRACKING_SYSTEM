@@ -11,20 +11,18 @@ import React, { useMemo } from 'react'
 import { Marker, Popup, CircleMarker } from 'react-leaflet'
 import L from 'leaflet'
 
-// Status colors
-const STATUS_COLORS = {
-  stationary: '#6b7280', // gray
-  slow: '#f59e0b', // yellow/amber
-  normal: '#22c55e', // green
-  fast: '#ef4444', // red
-  offline: '#9ca3af', // light gray
+// Connectivity colors
+const CONNECTIVITY_COLORS = {
+  online: '#22c55e', // green
+  delayed: '#f59e0b', // amber
+  offline: '#9ca3af', // gray
 }
 
 /**
  * Create custom icon for device marker
  */
-function createDeviceIcon(status, isSelected) {
-  const color = STATUS_COLORS[status] || STATUS_COLORS.offline
+function createDeviceIcon(connectivityStatus, isSelected) {
+  const color = CONNECTIVITY_COLORS[connectivityStatus] || CONNECTIVITY_COLORS.offline
   const size = isSelected ? 40 : 32
   const borderWidth = isSelected ? 4 : 2
   
@@ -78,13 +76,21 @@ function formatTime(timestamp) {
 /**
  * Get status display text
  */
-function getStatusText(status) {
+function getConnectivityText(status) {
+  const statusMap = {
+    online: 'Online',
+    delayed: 'Delayed',
+    offline: 'Offline',
+  }
+  return statusMap[status] || 'Unknown'
+}
+
+function getMovementText(status) {
   const statusMap = {
     stationary: 'Stationary',
     slow: 'Slow Moving',
     normal: 'Normal Speed',
     fast: 'High Speed',
-    offline: 'Offline',
   }
   return statusMap[status] || 'Unknown'
 }
@@ -98,14 +104,13 @@ function DeviceMarker({ device, isSelected, onClick }) {
   }
 
   const position = [latest_location.latitude, latest_location.longitude]
-  const status = latest_location.speed !== null 
-    ? (latest_location.speed < 5 ? 'stationary' 
-       : latest_location.speed < 20 ? 'slow' 
-       : latest_location.speed < 60 ? 'normal' 
-       : 'fast')
-    : 'offline'
+  const connectivityStatus = device.connection_status || 'offline'
+  const movementStatus = device.movement_status || 'unknown'
 
-  const icon = useMemo(() => createDeviceIcon(status, isSelected), [status, isSelected])
+  const icon = useMemo(
+    () => createDeviceIcon(connectivityStatus, isSelected),
+    [connectivityStatus, isSelected]
+  )
 
   return (
     <Marker
@@ -125,16 +130,22 @@ function DeviceMarker({ device, isSelected, onClick }) {
           <div className="space-y-2">
             {/* Status */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Status:</span>
+              <span className="text-sm text-gray-600">Connectivity:</span>
               <span 
                 className="px-2 py-1 rounded-full text-xs font-medium"
                 style={{ 
-                  backgroundColor: `${STATUS_COLORS[status]}20`,
-                  color: STATUS_COLORS[status]
+                  backgroundColor: `${CONNECTIVITY_COLORS[connectivityStatus]}20`,
+                  color: CONNECTIVITY_COLORS[connectivityStatus]
                 }}
               >
-                {getStatusText(status)}
+                {getConnectivityText(connectivityStatus)}
               </span>
+            </div>
+
+            {/* Movement */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Movement:</span>
+              <span className="text-sm font-medium">{getMovementText(movementStatus)}</span>
             </div>
             
             {/* Speed */}

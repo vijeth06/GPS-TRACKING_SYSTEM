@@ -82,6 +82,11 @@ async def create_indexes():
     # Devices collection indexes
     await db.devices.create_index("device_id", unique=True)
     await db.devices.create_index("status")
+
+    # Users collection indexes
+    await db.users.create_index("username", unique=True)
+    await db.users.create_index("role")
+    await db.users.create_index("is_active")
     
     # GPS locations collection indexes
     await db.gps_locations.create_index("device_id")
@@ -119,6 +124,15 @@ async def create_indexes():
 
     # GeoServer layer cache indexes
     await db.layer_cache.create_index("layer_name", unique=True)
+    await db.geoserver_config.create_index("updated_at")
+
+    # Archive collection indexes
+    await db.gps_locations_archive.create_index("timestamp")
+    await db.gps_locations_archive.create_index("archived_at")
+    await db.alerts_archive.create_index("timestamp")
+    await db.alerts_archive.create_index("archived_at")
+    await db.raw_packets_archive.create_index("created_at")
+    await db.raw_packets_archive.create_index("archived_at")
 
 
 async def close_db():

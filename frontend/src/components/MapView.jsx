@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { MapContainer, TileLayer, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, CircleMarker, Tooltip } from 'react-leaflet'
 import DeviceMarker from './DeviceMarker'
 import TrailLayer from './TrailLayer'
 import GeofenceLayer from './GeofenceLayer'
@@ -48,7 +48,7 @@ function MapController({ selectedDevice, devices }) {
   return null
 }
 
-function MapView({ devices, selectedDevice, geofences, onDeviceSelect }) {
+function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoint = null }) {
   const [trail, setTrail] = useState(null)
   const [loadingTrail, setLoadingTrail] = useState(false)
 
@@ -134,6 +134,23 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect }) {
             onClick={() => onDeviceSelect(device)}
           />
         ))}
+
+        {replayPoint && (
+          <CircleMarker
+            center={[replayPoint.lat, replayPoint.lng]}
+            radius={9}
+            pathOptions={{
+              color: '#1d4ed8',
+              fillColor: '#60a5fa',
+              fillOpacity: 0.85,
+              weight: 2,
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -10]}>
+              Replay Point
+            </Tooltip>
+          </CircleMarker>
+        )}
       </MapContainer>
 
       {/* Loading overlay */}
@@ -147,10 +164,13 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect }) {
       <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000]">
         <h4 className="text-xs font-semibold text-gray-700 mb-2">Status Legend</h4>
         <div className="space-y-1">
-          <LegendItem color="bg-gray-500" label="Stationary" />
-          <LegendItem color="bg-yellow-500" label="Slow (5-20 km/h)" />
-          <LegendItem color="bg-green-500" label="Normal (20-60 km/h)" />
-          <LegendItem color="bg-red-500" label="Fast (>60 km/h)" />
+          <LegendItem color="bg-green-500" label="Connectivity: Online" />
+          <LegendItem color="bg-yellow-500" label="Connectivity: Delayed" />
+          <LegendItem color="bg-gray-300" label="Connectivity: Offline" />
+          <LegendItem color="bg-gray-500" label="Movement: Stationary" />
+          <LegendItem color="bg-yellow-500" label="Movement: Slow (5-20 km/h)" />
+          <LegendItem color="bg-green-500" label="Movement: Normal (20-60 km/h)" />
+          <LegendItem color="bg-red-500" label="Movement: Fast (>60 km/h)" />
         </div>
       </div>
     </div>

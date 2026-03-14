@@ -9,12 +9,14 @@ Endpoints:
     POST /alerts/{id}/acknowledge - Acknowledge an alert
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from backend.api.schemas import AlertResponse, AlertResolve
+from backend.api.schemas import AlertResponse, AlertResolve, AlertAssign, AlertEscalate
 from backend.services.alert_service import AlertService
+from backend.services.auth_dependencies import require_roles
+from backend.services.auth_service import UserRole
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -96,10 +98,51 @@ async def acknowledge_alert(alert_id: str):
 
 
 @router.post("/{alert_id}/resolve", response_model=AlertResponse, summary="Resolve alert")
-async def resolve_alert(alert_id: str, payload: AlertResolve):
+async def resolve_alert(
+    alert_id: str,
+    payload: AlertResolve,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+):
     """Resolve an alert and store lifecycle audit information."""
     alert_service = AlertService()
     alert = await alert_service.resolve_alert(alert_id, resolution_note=payload.resolution_note)
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    return alert
+
+
+@router.post("/{alert_id}/assign", response_model=AlertResponse, summary="Assign alert")
+async def assign_alert(
+    alert_id: str,
+    payload: AlertAssign,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+):
+    """Assign an alert to an operator with audit trail."""
+    alert_service = AlertService()
+    alert = await alert_service.assign_alert(
+        alert_id=alert_id,
+        assigned_to=payload.assigned_to,
+        assigned_by=current_user.get("username", "unknown"),
+        assignment_note=payload.assignment_note,
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+    return alert
+
+
+@router.post("/{alert_id}/escalate", response_model=AlertResponse, summary="Escalate alert")
+async def escalate_alert(
+    alert_id: str,
+    payload: AlertEscalate,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+):
+    """Escalate alert severity and escalation level."""
+    alert_service = AlertService()
+    alert = await alert_service.escalate_alert(
+        alert_id=alert_id,
+        escalated_by=current_user.get("username", "unknown"),
+        escalation_note=payload.escalation_note,
+    )
     if not alert:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
     return alert

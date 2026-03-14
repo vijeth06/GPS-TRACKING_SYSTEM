@@ -7,25 +7,19 @@
 import React from 'react'
 import { Truck, Circle } from 'lucide-react'
 
-// Status colors and labels
-const STATUS_CONFIG = {
-  stationary: { color: 'bg-gray-500', label: 'Stationary' },
-  slow: { color: 'bg-yellow-500', label: 'Slow' },
-  normal: { color: 'bg-green-500', label: 'Normal' },
-  fast: { color: 'bg-red-500', label: 'Fast' },
+// Connectivity colors and labels
+const CONNECTIVITY_CONFIG = {
+  online: { color: 'bg-green-500', label: 'Online' },
+  delayed: { color: 'bg-yellow-500', label: 'Delayed' },
   offline: { color: 'bg-gray-300', label: 'Offline' },
 }
 
-function getDeviceStatus(device) {
-  const { latest_location } = device
-  if (!latest_location || latest_location.speed === null) {
-    return 'offline'
-  }
-  const speed = latest_location.speed
-  if (speed < 5) return 'stationary'
-  if (speed < 20) return 'slow'
-  if (speed < 60) return 'normal'
-  return 'fast'
+const MOVEMENT_LABELS = {
+  stationary: 'Stationary',
+  slow: 'Slow',
+  normal: 'Normal',
+  fast: 'Fast',
+  unknown: 'Unknown',
 }
 
 function DeviceList({ devices, selectedDevice, onDeviceSelect }) {
@@ -41,8 +35,9 @@ function DeviceList({ devices, selectedDevice, onDeviceSelect }) {
   return (
     <div className="space-y-2">
       {devices.map((device) => {
-        const status = getDeviceStatus(device)
-        const statusConfig = STATUS_CONFIG[status]
+        const connectivity = device.connection_status || 'offline'
+        const connectivityConfig = CONNECTIVITY_CONFIG[connectivity] || CONNECTIVITY_CONFIG.offline
+        const movementLabel = MOVEMENT_LABELS[device.movement_status || 'unknown'] || 'Unknown'
         const isSelected = selectedDevice?.device_id === device.device_id
         const speed = device.latest_location?.speed
 
@@ -61,7 +56,7 @@ function DeviceList({ devices, selectedDevice, onDeviceSelect }) {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 {/* Status indicator */}
-                <div className={`w-3 h-3 rounded-full ${statusConfig.color}`} />
+                <div className={`w-3 h-3 rounded-full ${connectivityConfig.color}`} />
                 
                 {/* Device info */}
                 <div>
@@ -82,7 +77,7 @@ function DeviceList({ devices, selectedDevice, onDeviceSelect }) {
                     : 'N/A'
                   }
                 </p>
-                <p className="text-xs text-gray-500">{statusConfig.label}</p>
+                <p className="text-xs text-gray-500">{connectivityConfig.label} • {movementLabel}</p>
               </div>
             </div>
           </div>

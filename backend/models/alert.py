@@ -62,6 +62,12 @@ def create_alert_document(
         "is_acknowledged": False,
         "acknowledged_at": None,
         "resolved_at": None,
+        "assigned_to": None,
+        "assigned_by": None,
+        "assigned_at": None,
+        "escalation_level": 0,
+        "escalated_at": None,
+        "escalation_due_at": now,
         "timestamp": now,
         "created_at": now
     }
@@ -93,6 +99,12 @@ def alert_to_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
         "is_acknowledged": doc.get("is_acknowledged", False),
         "acknowledged_at": doc.get("acknowledged_at").isoformat() if doc.get("acknowledged_at") else None,
         "resolved_at": doc.get("resolved_at").isoformat() if doc.get("resolved_at") else None,
+        "assigned_to": doc.get("assigned_to"),
+        "assigned_at": doc.get("assigned_at").isoformat() if doc.get("assigned_at") else None,
+        "assigned_by": doc.get("assigned_by"),
+        "escalation_level": doc.get("escalation_level", 0),
+        "escalated_at": doc.get("escalated_at").isoformat() if doc.get("escalated_at") else None,
+        "escalation_due_at": doc.get("escalation_due_at").isoformat() if doc.get("escalation_due_at") else None,
         "timestamp": doc.get("timestamp").isoformat() if doc.get("timestamp") else None,
         "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else None
     }

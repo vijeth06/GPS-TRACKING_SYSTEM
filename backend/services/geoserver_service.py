@@ -20,9 +20,55 @@ class GeoserverService:
         self.wms_url = os.getenv("GEOSERVER_WMS_URL", "")
         self.layers = [l.strip() for l in os.getenv("GEOSERVER_LAYER_NAMES", "").split(",") if l.strip()]
 
+    async def _get_layer_names(self) -> List[str]:
+        config = await self.db.geoserver_config.find_one({"_id": "runtime"})
+        if config and isinstance(config.get("layer_names"), list):
+            return [str(l).strip() for l in config.get("layer_names", []) if str(l).strip()]
+        return self.layers
+
+    async def config_status(self) -> Dict[str, Any]:
+        config = await self.db.geoserver_config.find_one({"_id": "runtime"})
+        layer_names = await self._get_layer_names()
+        reachable = None
+        if self.wfs_url:
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get(self.wfs_url, params={"service": "WFS", "request": "GetCapabilities"})
+                    reachable = resp.status_code < 400
+            except Exception:
+                reachable = False
+
+        return {
+            "wfs_url": self.wfs_url or None,
+            "wms_url": self.wms_url or None,
+            "layer_names": layer_names,
+            "has_runtime_override": bool(config),
+            "wfs_reachable": reachable,
+        }
+
+    async def update_layer_names(self, layer_names: List[str]) -> Dict[str, Any]:
+        cleaned = [str(l).strip() for l in layer_names if str(l).strip()]
+        await self.db.geoserver_config.update_one(
+            {"_id": "runtime"},
+            {
+                "$set": {
+                    "layer_names": cleaned,
+                    "updated_at": datetime.utcnow(),
+                },
+                "$setOnInsert": {"created_at": datetime.utcnow()},
+            },
+            upsert=True,
+        )
+        return await self.config_status()
+
+    async def clear_layer_cache(self) -> Dict[str, Any]:
+        result = await self.db.layer_cache.delete_many({})
+        return {"deleted": result.deleted_count}
+
     async def list_layers(self) -> List[Dict[str, Any]]:
+        layer_names = await self._get_layer_names()
         out = []
-        for layer in self.layers:
+        for layer in layer_names:
             cache = await self.db.layer_cache.find_one({"layer_name": layer})
             out.append(
                 {
@@ -39,11 +85,12 @@ class GeoserverService:
         imported = 0
         total_features = 0
 
-        if not self.wfs_url or not self.layers:
+        layer_names = await self._get_layer_names()
+        if not self.wfs_url or not layer_names:
             return {"layers": await self.list_layers(), "total_features_imported": 0, "imported_geofences": 0}
 
         async with httpx.AsyncClient(timeout=30) as client:
-            for layer in self.layers:
+            for layer in layer_names:
                 params = {
                     "service": "WFS",
                     "version": "1.1.0",

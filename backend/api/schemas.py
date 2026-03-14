@@ -4,9 +4,32 @@ Pydantic Schemas
 Request and response models for API validation.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import Optional, List
 from datetime import datetime
+
+
+# =============================================================================
+# AUTH SCHEMAS
+# =============================================================================
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    password: str = Field(..., min_length=3, max_length=128)
+
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    full_name: Optional[str] = None
+    role: str
+    is_active: bool
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse
 
 
 # =============================================================================
@@ -15,7 +38,7 @@ from datetime import datetime
 
 class GPSDataInput(BaseModel):
     """Schema for incoming GPS data from devices/simulator"""
-    device_id: str = Field(..., description="Unique device identifier", example="TRK101")
+    device_id: str = Field(..., description="Unique device identifier")
     latitude: float = Field(..., ge=-90, le=90, description="Latitude coordinate")
     longitude: float = Field(..., ge=-180, le=180, description="Longitude coordinate")
     timestamp: datetime = Field(..., description="GPS reading timestamp")
@@ -24,8 +47,8 @@ class GPSDataInput(BaseModel):
     heading: Optional[float] = Field(None, ge=0, le=360, description="Heading in degrees")
     accuracy: Optional[float] = Field(None, ge=0, description="Accuracy in meters")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "device_id": "TRK101",
                 "latitude": 11.2754,
@@ -35,6 +58,7 @@ class GPSDataInput(BaseModel):
                 "heading": 180.0
             }
         }
+    )
 
 
 class GPSDataResponse(BaseModel):
@@ -50,8 +74,7 @@ class GPSDataResponse(BaseModel):
     timestamp: datetime
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -75,8 +98,7 @@ class DeviceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DeviceWithLocation(DeviceResponse):
@@ -84,6 +106,32 @@ class DeviceWithLocation(DeviceResponse):
     latest_location: Optional[GPSDataResponse] = None
     total_distance: Optional[float] = None
     average_speed: Optional[float] = None
+    connection_status: Optional[str] = "offline"  # online, delayed, offline
+    movement_status: Optional[str] = "unknown"  # stationary, slow, normal, fast
+    last_seen: Optional[datetime] = None
+
+
+class DeviceOnboardRequest(BaseModel):
+    """Schema for onboarding/credential provisioning."""
+    device_id: str = Field(..., min_length=1, max_length=64)
+    device_name: Optional[str] = Field(None, max_length=100)
+    device_type: Optional[str] = Field("vehicle", max_length=50)
+
+
+class DeviceCredentialResponse(BaseModel):
+    """Schema for one-time credential issuance response."""
+    device_id: str
+    api_key: str
+    credential_active: bool
+    rotated_at: datetime
+    created: bool
+
+
+class DeviceCredentialStatusResponse(BaseModel):
+    """Credential metadata response (does not expose API key)."""
+    device_id: str
+    credential_active: bool
+    rotated_at: Optional[datetime] = None
 
 
 # =============================================================================
@@ -135,8 +183,7 @@ class GeofenceResponse(BaseModel):
     coordinates: List[CoordinatePoint]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -159,9 +206,14 @@ class AlertResponse(BaseModel):
     status: Optional[str] = "triggered"
     acknowledged_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
+    assigned_to: Optional[str] = None
+    assigned_at: Optional[datetime] = None
+    assigned_by: Optional[str] = None
+    escalation_level: Optional[int] = 0
+    escalated_at: Optional[datetime] = None
+    escalation_due_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AlertAcknowledge(BaseModel):
@@ -172,6 +224,17 @@ class AlertAcknowledge(BaseModel):
 class AlertResolve(BaseModel):
     """Schema for resolving an alert"""
     resolution_note: Optional[str] = None
+
+
+class AlertAssign(BaseModel):
+    """Schema for assigning an alert to an operator."""
+    assigned_to: str = Field(..., min_length=2, max_length=64)
+    assignment_note: Optional[str] = Field(None, max_length=256)
+
+
+class AlertEscalate(BaseModel):
+    """Schema for escalating an alert."""
+    escalation_note: Optional[str] = Field(None, max_length=256)
 
 
 # =============================================================================
@@ -281,6 +344,18 @@ class GeoserverSyncResult(BaseModel):
     imported_geofences: int
 
 
+class GeoserverConfigStatus(BaseModel):
+    wfs_url: Optional[str] = None
+    wms_url: Optional[str] = None
+    layer_names: List[str] = []
+    has_runtime_override: bool = False
+    wfs_reachable: Optional[bool] = None
+
+
+class GeoserverConfigUpdate(BaseModel):
+    layer_names: List[str] = Field(default_factory=list)
+
+
 class OpsSnapshot(BaseModel):
     total_devices: int
     online_devices: int
@@ -289,6 +364,29 @@ class OpsSnapshot(BaseModel):
     packets_last_minute: int
     packet_error_rate: float
     generated_at: datetime
+
+
+class RetentionRunResult(BaseModel):
+    archived_gps: int
+    archived_alerts: int
+    archived_packets: int
+    cutoff_days: int
+    ran_at: datetime
+
+
+class RetentionStatus(BaseModel):
+    enabled: bool
+    interval_minutes: int
+    cutoff_days: int
+    last_run_at: Optional[datetime] = None
+    last_result: Optional[RetentionRunResult] = None
+
+
+class IncidentWorkspaceResponse(BaseModel):
+    alert: AlertResponse
+    related_alerts: List[AlertResponse]
+    recent_trail: DeviceTrailResponse
+    investigation_summary: str
 
 
 class DemoScenarioResult(BaseModel):

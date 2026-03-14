@@ -27,10 +27,14 @@ import DeviceList from '../components/DeviceList'
 import AlertPanel from '../components/AlertPanel'
 import AnalyticsDashboard from '../components/AnalyticsDashboard'
 import WorkflowPanel from '../components/WorkflowPanel'
+import RouteReplayTimeline from '../components/RouteReplayTimeline'
+import IncidentWorkspace from '../components/IncidentWorkspace'
 import { getDevices, getAlerts, getGeofences, getSystemAnalytics } from '../services/api'
 import socketService from '../services/socket'
+import { useAuth } from '../context/AuthContext'
 
 function Dashboard() {
+  const { user, logout } = useAuth()
   // State
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
@@ -44,6 +48,8 @@ function Dashboard() {
   })
   const [isConnected, setIsConnected] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [replayPoint, setReplayPoint] = useState(null)
+  const [selectedAlert, setSelectedAlert] = useState(null)
 
   // Initial data fetch
   useEffect(() => {
@@ -102,16 +108,19 @@ function Dashboard() {
       setDevices((prevDevices) => {
         return prevDevices.map((device) => {
           if (device.device_id === data.device_id) {
+            const currentLatest = device.latest_location || {}
             return {
               ...device,
               latest_location: {
-                ...device.latest_location,
+                ...currentLatest,
                 latitude: data.lat,
                 longitude: data.lng,
                 speed: data.speed,
                 timestamp: data.timestamp,
               },
-              status: data.status,
+              movement_status: data.status || device.movement_status || 'unknown',
+              connection_status: 'online',
+              last_seen: data.timestamp,
             }
           }
           return device
@@ -141,16 +150,19 @@ function Dashboard() {
   }, [])
 
   // Acknowledge alert handler
-  const handleAcknowledgeAlert = useCallback((alertId) => {
+  const handleAlertChanged = useCallback((updatedAlert) => {
+    if (!updatedAlert?.id) return
+
     setAlerts((prevAlerts) =>
-      prevAlerts.map((alert) =>
-        alert.id === alertId ? { ...alert, is_acknowledged: true } : alert
-      )
+      prevAlerts.map((alert) => (alert.id === updatedAlert.id ? { ...alert, ...updatedAlert } : alert))
     )
-    setSystemStats((prev) => ({
-      ...prev,
-      unacknowledged_alerts: Math.max(0, prev.unacknowledged_alerts - 1),
-    }))
+
+    if (updatedAlert.is_acknowledged) {
+      setSystemStats((prev) => ({
+        ...prev,
+        unacknowledged_alerts: Math.max(0, prev.unacknowledged_alerts - 1),
+      }))
+    }
   }, [])
 
   return (
@@ -175,6 +187,10 @@ function Dashboard() {
             
             {/* Connection Status */}
             <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-700">{user?.username}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">{user?.role}</p>
+              </div>
               <div className="flex items-center space-x-2">
                 <div
                   className={`w-3 h-3 rounded-full ${
@@ -185,6 +201,13 @@ function Dashboard() {
                   {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-sm px-3 py-1 rounded bg-gray-100 hover:bg-gray-200"
+              >
+                Logout
+              </button>
             </div>
           </div>
 
@@ -233,6 +256,7 @@ function Dashboard() {
                 selectedDevice={selectedDevice}
                 geofences={geofences}
                 onDeviceSelect={handleDeviceSelect}
+                replayPoint={replayPoint}
               />
             )}
           </div>
@@ -277,13 +301,24 @@ function Dashboard() {
               </h2>
               <AlertPanel
                 alerts={alerts}
-                onAcknowledge={handleAcknowledgeAlert}
+                role={user?.role}
+                username={user?.username || ''}
+                onAlertChanged={handleAlertChanged}
+                selectedAlertId={selectedAlert?.id || ''}
+                onSelectAlert={setSelectedAlert}
               />
             </div>
 
+            <RouteReplayTimeline
+              selectedDevice={selectedDevice}
+              onReplayPointChange={setReplayPoint}
+            />
+
+            <IncidentWorkspace selectedAlert={selectedAlert} />
+
             {/* Workflow Controls */}
             <div className="bg-white rounded-lg shadow-sm p-4 max-h-[260px] overflow-auto custom-scrollbar">
-              <WorkflowPanel />
+              <WorkflowPanel role={user?.role} />
             </div>
           </div>
         </div>

@@ -29,13 +29,18 @@ from backend.api.gps_routes import router as gps_router
 from backend.api.alert_routes import router as alert_router
 from backend.api.geofence_routes import router as geofence_router
 from backend.api.analytics_routes import router as analytics_router
+from backend.api.auth_routes import router as auth_router
 from backend.api.ingest_routes import router as ingest_router
 from backend.api.geoserver_routes import router as geoserver_router
 from backend.api.ops_routes import router as ops_router
 from backend.api.demo_routes import router as demo_router
+from backend.api.incident_routes import router as incident_router
+from backend.api.retention_routes import router as retention_router
 from backend.database.connection import init_db, close_db, get_database
 from backend.services.socket_manager import socket_manager
 from backend.services.ingestion_service import ingestion_service
+from backend.services.auth_service import AuthService
+from backend.services.retention_service import retention_service
 
 
 # =============================================================================
@@ -106,12 +111,14 @@ async def lifespan(app: FastAPI):
 
     # Start queue worker for raw stream ingestion
     await ingestion_service.start_worker()
+    await retention_service.start_scheduler()
     
     yield
     
     # Shutdown
     print("Shutting down GPS Tracking System...")
     await ingestion_service.stop_worker()
+    await retention_service.stop_scheduler()
     await close_db()
 
 
@@ -120,7 +127,10 @@ async def init_sample_data():
     from backend.models.device import create_device_document
     
     db = get_database()
+    auth = AuthService()
     try:
+        await auth.ensure_default_admin()
+
         # Check if devices exist
         existing = await db.devices.find_one()
         if not existing:
@@ -180,10 +190,13 @@ app.include_router(gps_router, prefix="/api")
 app.include_router(alert_router, prefix="/api")
 app.include_router(geofence_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 app.include_router(ingest_router, prefix="/api")
 app.include_router(geoserver_router, prefix="/api")
 app.include_router(ops_router, prefix="/api")
 app.include_router(demo_router, prefix="/api")
+app.include_router(incident_router, prefix="/api")
+app.include_router(retention_router, prefix="/api")
 
 
 # =============================================================================
