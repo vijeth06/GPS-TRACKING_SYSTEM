@@ -134,6 +134,28 @@ async def create_indexes():
     await db.raw_packets_archive.create_index("created_at")
     await db.raw_packets_archive.create_index("archived_at")
 
+    # Notification indexes
+    await db.notification_channels.create_index([("channel_type", 1), ("name", 1)], unique=True)
+    await db.notification_events.create_index("created_at")
+    await db.notification_events.create_index("provider")
+
+    # Rule engine indexes
+    await db.rule_engine_rules.create_index("event_type")
+    await db.rule_engine_rules.create_index([("enabled", 1), ("priority", 1)])
+
+    # Route management indexes
+    await db.route_plans.create_index([("device_id", 1), ("active", 1)])
+    await db.route_deviation_events.create_index("timestamp")
+    await db.route_deviation_events.create_index("device_id")
+
+    # Admin and governance indexes
+    await db.teams.create_index("team_name", unique=True)
+    await db.governance_settings.create_index("name", unique=True)
+
+    # Intelligence indexes
+    await db.anomaly_insights.create_index("device_id")
+    await db.anomaly_insights.create_index("measured_at")
+
 
 async def close_db():
     """

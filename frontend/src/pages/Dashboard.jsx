@@ -29,6 +29,7 @@ import AnalyticsDashboard from '../components/AnalyticsDashboard'
 import WorkflowPanel from '../components/WorkflowPanel'
 import RouteReplayTimeline from '../components/RouteReplayTimeline'
 import IncidentWorkspace from '../components/IncidentWorkspace'
+import AdvancedOpsPanel from '../components/AdvancedOpsPanel'
 import { getDevices, getAlerts, getGeofences, getSystemAnalytics } from '../services/api'
 import socketService from '../services/socket'
 import { useAuth } from '../context/AuthContext'
@@ -320,6 +321,8 @@ function Dashboard() {
             <div className="bg-white rounded-lg shadow-sm p-4 max-h-[260px] overflow-auto custom-scrollbar">
               <WorkflowPanel role={user?.role} />
             </div>
+
+            <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
           </div>
         </div>
       </main>

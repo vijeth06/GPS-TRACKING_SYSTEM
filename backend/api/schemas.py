@@ -393,3 +393,158 @@ class DemoScenarioResult(BaseModel):
     scenario: str
     success: bool
     details: str
+
+
+# =============================================================================
+# NOTIFICATIONS / RULES / ROUTES / ADMIN / REPORTING / GOVERNANCE / INTELLIGENCE
+# =============================================================================
+
+class NotificationChannelConfig(BaseModel):
+    channel_type: str = Field(..., min_length=2, max_length=32)
+    name: str = Field(..., min_length=2, max_length=64)
+    enabled: bool = True
+    recipient: Optional[str] = Field(None, max_length=128)
+    webhook_url: Optional[str] = Field(None, max_length=512)
+    severity_filter: List[str] = Field(default_factory=lambda: ["medium", "high", "critical"])
+
+
+class NotificationChannelResponse(NotificationChannelConfig):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class NotificationTestRequest(BaseModel):
+    message: str = Field(..., min_length=3, max_length=256)
+    severity: str = Field("medium", min_length=3, max_length=16)
+
+
+class NotificationDispatchResult(BaseModel):
+    delivered: bool
+    provider: str
+    details: str
+    dispatched_at: datetime
+
+
+class RuleCondition(BaseModel):
+    field: str = Field(..., min_length=2, max_length=64)
+    op: str = Field(..., min_length=1, max_length=16)
+    value: str = Field(..., min_length=1, max_length=128)
+
+
+class RuleAction(BaseModel):
+    action_type: str = Field(..., min_length=2, max_length=32)
+    target: Optional[str] = Field(None, max_length=128)
+    payload: Optional[dict] = None
+
+
+class RuleDefinition(BaseModel):
+    name: str = Field(..., min_length=3, max_length=80)
+    description: Optional[str] = Field(None, max_length=256)
+    event_type: str = Field(..., min_length=3, max_length=64)
+    enabled: bool = True
+    priority: int = Field(100, ge=1, le=1000)
+    conditions: List[RuleCondition] = Field(default_factory=list)
+    actions: List[RuleAction] = Field(default_factory=list)
+
+
+class RuleResponse(RuleDefinition):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RuleEvaluationResult(BaseModel):
+    matched_rule_ids: List[str] = []
+    executed_actions: List[str] = []
+
+
+class RouteWaypoint(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    sequence: int = Field(..., ge=0)
+
+
+class RoutePlanCreate(BaseModel):
+    route_name: str = Field(..., min_length=3, max_length=100)
+    device_id: str = Field(..., min_length=1, max_length=64)
+    deviation_threshold_m: int = Field(250, ge=50, le=5000)
+    active: bool = True
+    waypoints: List[RouteWaypoint] = Field(default_factory=list)
+
+
+class RoutePlanResponse(RoutePlanCreate):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RouteDeviationEvent(BaseModel):
+    route_id: str
+    device_id: str
+    distance_m: float
+    threshold_m: float
+    latitude: float
+    longitude: float
+    timestamp: datetime
+
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    password: str = Field(..., min_length=3, max_length=128)
+    full_name: Optional[str] = Field(None, max_length=128)
+    role: str = Field("viewer", min_length=3, max_length=32)
+    is_active: bool = True
+
+
+class AdminUserUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, max_length=128)
+    role: Optional[str] = Field(None, min_length=3, max_length=32)
+    is_active: Optional[bool] = None
+
+
+class TeamCreate(BaseModel):
+    team_name: str = Field(..., min_length=2, max_length=100)
+    lead_username: Optional[str] = Field(None, max_length=64)
+    members: List[str] = Field(default_factory=list)
+    on_call: bool = False
+
+
+class TeamResponse(TeamCreate):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ReportingWindow(BaseModel):
+    hours: int = Field(24, ge=1, le=24 * 90)
+
+
+class ReportingSummary(BaseModel):
+    hours: int
+    total_packets: int
+    total_alerts: int
+    resolved_alerts: int
+    route_deviation_events: int
+    active_devices: int
+    avg_speed: float
+    generated_at: datetime
+
+
+class GovernanceSettings(BaseModel):
+    mask_device_identifier: bool = False
+    mask_precision_decimals: int = Field(5, ge=2, le=6)
+    export_requires_admin: bool = True
+    updated_by: Optional[str] = Field(None, max_length=64)
+
+
+class GovernanceSettingsResponse(GovernanceSettings):
+    id: str
+    updated_at: datetime
+
+
+class AnomalyInsight(BaseModel):
+    device_id: str
+    anomaly_score: float
+    reason: str
+    measured_at: datetime

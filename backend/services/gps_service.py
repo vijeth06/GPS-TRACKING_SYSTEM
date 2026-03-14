@@ -23,6 +23,8 @@ from backend.services.geofence_service import GeofenceService
 from backend.services.alert_service import AlertService
 from backend.services.alert_rules_service import AlertRulesService
 from backend.services.intelligence_service import IntelligenceService
+from backend.services.rule_engine_service import RuleEngineService
+from backend.services.route_service import RouteService
 
 
 class GPSService:
@@ -45,6 +47,8 @@ class GPSService:
         self.alert_service = AlertService()
         self.alert_rules = AlertRulesService()
         self.intelligence = IntelligenceService()
+        self.rule_engine = RuleEngineService()
+        self.route_service = RouteService()
     
     async def process_gps_data(self, gps_data: GPSDataInput) -> dict:
         """
@@ -92,6 +96,7 @@ class GPSService:
         # 5b. Quality score and trip state
         quality_score = self.intelligence.compute_quality_score(gps_data.accuracy, speed)
         trip_state = await self.intelligence.update_trip_state(gps_data.device_id, gps_data.timestamp, speed)
+        anomaly = await self.intelligence.compute_speed_anomaly(gps_data.device_id, speed, gps_data.timestamp)
         
         # 6. Check for stationary alert
         stationary_alert = await self.movement_analyzer.check_stationary(
@@ -141,6 +146,40 @@ class GPSService:
                     metadata={**violation, "quality_score": quality_score}
                 )
                 alerts_generated.append(alert)
+
+        # 8b. Route deviation detection
+        route_deviation = await self.route_service.evaluate_deviation(
+            device_id=gps_data.device_id,
+            latitude=gps_data.latitude,
+            longitude=gps_data.longitude,
+            timestamp=gps_data.timestamp,
+        )
+
+        # 8c. Anomaly-triggered alert for strong outliers
+        if anomaly.get("anomaly_score", 0) >= 0.8 and await self.alert_rules.should_emit_alert(gps_data.device_id, "anomaly_alert", 180):
+            alert = await self.alert_service.create_alert(
+                device_id=gps_data.device_id,
+                alert_type="anomaly_alert",
+                severity="high",
+                message="Anomalous movement pattern detected",
+                latitude=gps_data.latitude,
+                longitude=gps_data.longitude,
+                metadata={"quality_score": quality_score, **anomaly},
+            )
+            alerts_generated.append(alert)
+
+        # 8d. Rule engine event evaluation
+        rule_eval = await self.rule_engine.evaluate_event(
+            "gps_point",
+            {
+                "device_id": gps_data.device_id,
+                "speed": speed or 0,
+                "status": status,
+                "quality_score": quality_score,
+                "anomaly_score": anomaly.get("anomaly_score", 0),
+                "route_deviation_m": route_deviation.get("distance_m", 0) if route_deviation else 0,
+            },
+        )
         
         # 9. Broadcast real-time update
         await self._broadcast_location_update(
@@ -164,6 +203,9 @@ class GPSService:
             "status": status,
             "quality_score": quality_score,
             "trip_state": trip_state,
+            "anomaly": anomaly,
+            "route_deviation": route_deviation,
+            "rule_evaluation": rule_eval,
             "alerts": alerts_generated
         }
     

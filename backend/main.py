@@ -36,6 +36,13 @@ from backend.api.ops_routes import router as ops_router
 from backend.api.demo_routes import router as demo_router
 from backend.api.incident_routes import router as incident_router
 from backend.api.retention_routes import router as retention_router
+from backend.api.notification_routes import router as notification_router
+from backend.api.rule_engine_routes import router as rule_engine_router
+from backend.api.route_management_routes import router as route_management_router
+from backend.api.admin_routes import router as admin_router
+from backend.api.reporting_routes import router as reporting_router
+from backend.api.governance_routes import router as governance_router
+from backend.api.intelligence_routes import router as intelligence_router
 from backend.database.connection import init_db, close_db, get_database
 from backend.services.socket_manager import socket_manager
 from backend.services.ingestion_service import ingestion_service
@@ -197,6 +204,13 @@ app.include_router(ops_router, prefix="/api")
 app.include_router(demo_router, prefix="/api")
 app.include_router(incident_router, prefix="/api")
 app.include_router(retention_router, prefix="/api")
+app.include_router(notification_router, prefix="/api")
+app.include_router(rule_engine_router, prefix="/api")
+app.include_router(route_management_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
+app.include_router(reporting_router, prefix="/api")
+app.include_router(governance_router, prefix="/api")
+app.include_router(intelligence_router, prefix="/api")
 
 
 # =============================================================================

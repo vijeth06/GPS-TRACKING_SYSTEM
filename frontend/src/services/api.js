@@ -345,4 +345,85 @@ export const runRetentionNow = async () => {
   return response.data
 }
 
+// =============================================================================
+// NOTIFICATIONS / RULES / ROUTES / ADMIN / REPORTING / GOVERNANCE / INTELLIGENCE
+// =============================================================================
+
+export const getNotificationChannels = async () => {
+  const response = await api.get('/notifications/channels')
+  return response.data
+}
+
+export const saveNotificationChannel = async (payload) => {
+  const response = await api.post('/notifications/channels', payload)
+  return response.data
+}
+
+export const testNotificationChannel = async (channelId, payload) => {
+  const response = await api.post(`/notifications/channels/${channelId}/test`, payload)
+  return response.data
+}
+
+export const getAutomationRules = async () => {
+  const response = await api.get('/rules')
+  return response.data
+}
+
+export const createAutomationRule = async (payload) => {
+  const response = await api.post('/rules', payload)
+  return response.data
+}
+
+export const getRoutePlans = async (deviceId = '') => {
+  const response = await api.get('/routes', {
+    params: deviceId ? { device_id: deviceId } : {},
+  })
+  return response.data
+}
+
+export const createRoutePlan = async (payload) => {
+  const response = await api.post('/routes', payload)
+  return response.data
+}
+
+export const getAdminUsers = async () => {
+  const response = await api.get('/admin/users')
+  return response.data
+}
+
+export const createAdminUser = async (payload) => {
+  const response = await api.post('/admin/users', payload)
+  return response.data
+}
+
+export const getTeams = async () => {
+  const response = await api.get('/admin/teams')
+  return response.data
+}
+
+export const createTeam = async (payload) => {
+  const response = await api.post('/admin/teams', payload)
+  return response.data
+}
+
+export const getReportingSummary = async (hours = 24) => {
+  const response = await api.get('/reporting/summary', { params: { hours } })
+  return response.data
+}
+
+export const getGovernanceSettings = async () => {
+  const response = await api.get('/governance/settings')
+  return response.data
+}
+
+export const updateGovernanceSettings = async (payload) => {
+  const response = await api.put('/governance/settings', payload)
+  return response.data
+}
+
+export const getAnomalyInsight = async (deviceId, speed = 0) => {
+  const response = await api.get('/intelligence/anomaly', { params: { device_id: deviceId, speed } })
+  return response.data
+}
+
 export default api

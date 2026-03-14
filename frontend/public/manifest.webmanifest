@@ -1,0 +1,16 @@
+{
+  "name": "GPS Tracking Operations",
+  "short_name": "GPS Ops",
+  "description": "Real-time fleet and incident operations dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#1f2937",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

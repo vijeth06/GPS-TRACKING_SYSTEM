@@ -11,6 +11,7 @@ from bson import ObjectId
 from backend.database.connection import get_database
 from backend.models.alert import create_alert_document, alert_to_dict, AlertType, AlertSeverity
 from backend.api.schemas import AlertResponse
+from backend.services.notification_service import NotificationService
 
 
 class AlertService:
@@ -22,6 +23,7 @@ class AlertService:
     
     def __init__(self):
         self.db = get_database()
+        self.notification_service = NotificationService()
 
     @staticmethod
     def _escalate_severity(current: str) -> str:
@@ -69,8 +71,9 @@ class AlertService:
         
         result = await self.db.alerts.insert_one(doc)
         doc["_id"] = result.inserted_id
-        
-        return alert_to_dict(doc)
+        alert = alert_to_dict(doc)
+        await self.notification_service.notify_alert_event(alert, "alert_created")
+        return alert
     
     async def get_alerts(
         self,
@@ -199,6 +202,12 @@ class AlertService:
                 "created_at": now,
             }
         )
+        await self.notification_service.notify_alert_event({
+            "id": str(alert["_id"]),
+            "device_id": alert.get("device_id"),
+            "severity": alert.get("severity"),
+            "message": f"Alert assigned to {assigned_to}",
+        }, "alert_assigned")
 
         return AlertResponse(
             id=str(alert["_id"]),
@@ -272,6 +281,12 @@ class AlertService:
                 "created_at": now,
             }
         )
+        await self.notification_service.notify_alert_event({
+            "id": str(alert["_id"]),
+            "device_id": alert.get("device_id"),
+            "severity": alert.get("severity"),
+            "message": f"Alert escalated to {alert.get('severity')}",
+        }, "alert_escalated")
 
         return AlertResponse(
             id=str(alert["_id"]),
@@ -371,6 +386,12 @@ class AlertService:
                 "created_at": datetime.utcnow(),
             }
         )
+        await self.notification_service.notify_alert_event({
+            "id": str(alert["_id"]),
+            "device_id": alert.get("device_id"),
+            "severity": alert.get("severity"),
+            "message": "Alert resolved",
+        }, "alert_resolved")
 
         return AlertResponse(
             id=str(alert["_id"]),
