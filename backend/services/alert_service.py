@@ -33,6 +33,19 @@ class AlertService:
         except ValueError:
             return AlertSeverity.MEDIUM
         return order[min(idx + 1, len(order) - 1)]
+
+    @staticmethod
+    def _infer_purpose(alert_type: str) -> str:
+        purpose_map = {
+            AlertType.STATIONARY: "idle_monitoring",
+            AlertType.SPEED: "speed_compliance",
+            AlertType.GEOFENCE: "zone_compliance",
+            "anomaly_alert": "anomaly_detection",
+            "route_deviation_alert": "route_adherence",
+            AlertType.OFFLINE: "connectivity_monitoring",
+            AlertType.BATTERY: "battery_health",
+        }
+        return purpose_map.get(alert_type, "general_monitoring")
     
     async def create_alert(
         self,
@@ -40,6 +53,7 @@ class AlertService:
         alert_type: str,
         severity: str,
         message: str,
+        purpose: Optional[str] = None,
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None
@@ -64,6 +78,7 @@ class AlertService:
             alert_type=alert_type,
             message=message,
             severity=severity,
+            purpose=purpose or self._infer_purpose(alert_type),
             latitude=latitude,
             longitude=longitude,
             metadata=metadata
@@ -110,6 +125,7 @@ class AlertService:
                 alert_type=alert["alert_type"],
                 severity=alert["severity"],
                 message=alert["message"],
+                purpose=alert.get("purpose", self._infer_purpose(alert.get("alert_type"))),
                 latitude=alert.get("latitude"),
                 longitude=alert.get("longitude"),
                 metadata=alert.get("metadata"),
@@ -144,6 +160,7 @@ class AlertService:
                 alert_type=alert["alert_type"],
                 severity=alert["severity"],
                 message=alert["message"],
+                purpose=alert.get("purpose", self._infer_purpose(alert.get("alert_type"))),
                 latitude=alert.get("latitude"),
                 longitude=alert.get("longitude"),
                 metadata=alert.get("metadata"),
@@ -215,6 +232,7 @@ class AlertService:
             alert_type=alert["alert_type"],
             severity=alert["severity"],
             message=alert["message"],
+            purpose=alert.get("purpose", self._infer_purpose(alert.get("alert_type"))),
             latitude=alert.get("latitude"),
             longitude=alert.get("longitude"),
             metadata=alert.get("metadata"),
@@ -294,6 +312,7 @@ class AlertService:
             alert_type=alert["alert_type"],
             severity=alert["severity"],
             message=alert["message"],
+            purpose=alert.get("purpose", self._infer_purpose(alert.get("alert_type"))),
             latitude=alert.get("latitude"),
             longitude=alert.get("longitude"),
             metadata=alert.get("metadata"),
@@ -337,6 +356,7 @@ class AlertService:
             alert_type=alert["alert_type"],
             severity=alert["severity"],
             message=alert["message"],
+            purpose=alert.get("purpose", self._infer_purpose(alert.get("alert_type"))),
             latitude=alert.get("latitude"),
             longitude=alert.get("longitude"),
             metadata=alert.get("metadata"),
@@ -399,6 +419,7 @@ class AlertService:
             alert_type=alert["alert_type"],
             severity=alert["severity"],
             message=alert["message"],
+            purpose=alert.get("purpose", self._infer_purpose(alert.get("alert_type"))),
             latitude=alert.get("latitude"),
             longitude=alert.get("longitude"),
             metadata=alert.get("metadata"),

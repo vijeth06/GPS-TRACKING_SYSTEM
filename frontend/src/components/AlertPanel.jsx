@@ -62,6 +62,15 @@ function formatTimestamp(timestamp) {
   return date.toLocaleDateString()
 }
 
+function formatPurpose(purpose) {
+  if (!purpose) return 'General monitoring'
+  return purpose
+    .replace(/[_-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, selectedAlertId = '', onSelectAlert }) {
   const [busyId, setBusyId] = React.useState('')
   const [assignees, setAssignees] = React.useState({})
@@ -214,6 +223,9 @@ function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, se
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 uppercase">
                 {alert.status || 'triggered'}
+              </span>
+              <span className="text-[11px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                {formatPurpose(alert.purpose)}
               </span>
               <span className="text-[11px] px-2 py-0.5 rounded bg-orange-100 text-orange-700">
                 Esc L{alert.escalation_level || 0}

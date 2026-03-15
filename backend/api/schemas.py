@@ -4,7 +4,7 @@ Pydantic Schemas
 Request and response models for API validation.
 """
 
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -199,6 +199,7 @@ class AlertResponse(BaseModel):
     alert_type: str
     severity: str
     message: str
+    purpose: Optional[str] = None
     latitude: Optional[float]
     longitude: Optional[float]
     metadata: Optional[dict]
@@ -549,7 +550,8 @@ class StreamListenerStartRequest(BaseModel):
         description="strict | flexible | vendor_x",
     )
 
-    @validator("dataset_profile")
+    @field_validator("dataset_profile")
+    @classmethod
     def validate_dataset_profile(cls, value):
         if value is None:
             return value

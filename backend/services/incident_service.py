@@ -28,6 +28,7 @@ class IncidentService:
             alert_type=alert["alert_type"],
             severity=alert["severity"],
             message=alert["message"],
+            purpose=alert.get("purpose", self.alert_service._infer_purpose(alert.get("alert_type"))),
             latitude=alert.get("latitude"),
             longitude=alert.get("longitude"),
             metadata=alert.get("metadata"),

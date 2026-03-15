@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, UTC
 from bson import ObjectId
 
 from backend.database.connection import get_database
+from backend.config.runtime import get_connectivity_thresholds_seconds
 from backend.models.device import DeviceStatus, create_device_document
 from backend.api.schemas import DeviceResponse, DeviceWithLocation, GPSDataResponse
 
@@ -57,10 +58,11 @@ class DeviceService:
 
         now = datetime.now(UTC).replace(tzinfo=None)
         delta_seconds = (now - last_timestamp).total_seconds()
+        online_seconds, delayed_seconds = get_connectivity_thresholds_seconds()
 
-        if delta_seconds <= 60:
+        if delta_seconds <= online_seconds:
             return "online"
-        if delta_seconds <= 300:
+        if delta_seconds <= delayed_seconds:
             return "delayed"
         return "offline"
 

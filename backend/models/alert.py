@@ -30,6 +30,7 @@ def create_alert_document(
     alert_type: str,
     message: str,
     severity: str = AlertSeverity.MEDIUM,
+    purpose: Optional[str] = None,
     latitude: Optional[float] = None,
     longitude: Optional[float] = None,
     metadata: Optional[Dict[str, Any]] = None
@@ -55,6 +56,7 @@ def create_alert_document(
         "alert_type": alert_type,
         "severity": severity,
         "message": message,
+        "purpose": purpose,
         "latitude": latitude,
         "longitude": longitude,
         "metadata": metadata,
@@ -91,6 +93,7 @@ def alert_to_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
         "alert_type": doc.get("alert_type"),
         "severity": doc.get("severity"),
         "message": doc.get("message"),
+        "purpose": doc.get("purpose"),
         "latitude": doc.get("latitude"),
         "longitude": doc.get("longitude"),
         "metadata": doc.get("metadata"),

@@ -1,6 +1,6 @@
 """Ingestion Routes"""
 
-from fastapi import APIRouter, Header, Depends
+from fastapi import APIRouter, Header, Depends, HTTPException
 
 from backend.api.schemas import (
     RawGPSPacket,
@@ -27,6 +27,10 @@ async def ingest_raw_packet(
 ):
     await verify_packet_ingest_auth(packet=packet, x_ingest_token=x_ingest_token, x_device_key=x_device_key)
     result = await ingestion_service.enqueue(packet)
+    if not result.get("accepted", False):
+        reason = result.get("reason") or "packet_rejected"
+        status_code = 429 if reason == "queue_full" else 400
+        raise HTTPException(status_code=status_code, detail=reason)
     return IngestionResult(**result)
 
 

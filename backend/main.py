@@ -20,7 +20,12 @@ It sets up:
 """
 
 import os
+import time
+import uuid
+import logging
 from fastapi import FastAPI
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
 import uvicorn
@@ -49,6 +54,11 @@ from backend.services.ingestion_service import ingestion_service
 from backend.services.auth_service import AuthService
 from backend.services.retention_service import retention_service
 from backend.services.stream_listener_service import stream_listener_service
+from backend.services.rate_limit_service import (
+    rate_limit_service,
+    get_login_rate_limit,
+    get_ingest_rate_limit,
+)
 
 
 
@@ -60,6 +70,7 @@ sio = socketio.AsyncServer(
 )
 
 socket_manager.set_socketio(sio)
+logger = logging.getLogger("gps_tracking.http")
 
 
 @sio.event
@@ -155,6 +166,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def request_context_and_rate_limit(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    client_ip = request.client.host if request.client else "unknown"
+    path = request.url.path
+
+    if request.method == "POST" and path == "/api/auth/login":
+        limit, window = get_login_rate_limit()
+        allowed = rate_limit_service.check(f"login:{client_ip}", limit, window)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Too many login attempts",
+                    "request_id": request_id,
+                },
+                headers={"X-Request-ID": request_id},
+            )
+
+    if request.method == "POST" and path == "/api/ingest/raw":
+        limit, window = get_ingest_rate_limit()
+        allowed = rate_limit_service.check(f"ingest:{client_ip}", limit, window)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Ingestion rate limit exceeded",
+                    "request_id": request_id,
+                },
+                headers={"X-Request-ID": request_id},
+            )
+
+    started = time.perf_counter()
+    response = await call_next(request)
+    elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
+    response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "%s %s status=%s ip=%s request_id=%s latency_ms=%s",
+        request.method,
+        path,
+        response.status_code,
+        client_ip,
+        request_id,
+        elapsed_ms,
+    )
+    return response
+
 app.include_router(gps_router, prefix="/api")
 app.include_router(alert_router, prefix="/api")
 app.include_router(geofence_router, prefix="/api")
@@ -190,6 +251,11 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     db = get_database()
+    if db is None:
+        return {
+            "status": "degraded",
+            "database": "not_initialized"
+        }
     try:
         await db.command("ping")
         db_status = "connected"
@@ -199,6 +265,43 @@ async def health_check():
     return {
         "status": "healthy",
         "database": db_status
+    }
+
+
+@app.get("/health/live", tags=["Health"])
+async def liveness_check():
+    """Liveness probe for process-level checks."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check():
+    """Readiness probe with dependency checks."""
+    db = get_database()
+    db_ready = False
+    db_error = None
+
+    if db is not None:
+        try:
+            await db.command("ping")
+            db_ready = True
+        except Exception as exc:
+            db_error = str(exc)
+    else:
+        db_error = "not_initialized"
+
+    components = {
+        "database": {"ready": db_ready, "error": db_error},
+        "ingestion_worker": {"ready": bool(ingestion_service.status().get("worker_running", False))},
+        "retention_scheduler": {"ready": bool(getattr(retention_service, "_running", False))},
+        "stream_listener": {"ready": True, "running": bool(stream_listener_service.status().get("running", False))},
+    }
+    ready = components["database"]["ready"] and components["ingestion_worker"]["ready"] and components["retention_scheduler"]["ready"]
+
+    return {
+        "status": "ready" if ready else "not_ready",
+        "ready": ready,
+        "components": components,
     }
 
 

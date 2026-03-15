@@ -6,17 +6,19 @@ Queue-based ingestion for raw GPS stream packets with dedup and validation.
 
 import asyncio
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Dict, Any
 
 from backend.api.schemas import RawGPSPacket, GPSDataInput
+from backend.config.runtime import get_ingestion_queue_maxsize
 from backend.database.connection import get_database
 from backend.services.gps_service import GPSService
 
 
 class IngestionService:
-    def __init__(self):
-        self.queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
+    def __init__(self, queue_maxsize: int = None):
+        maxsize = queue_maxsize if queue_maxsize is not None else get_ingestion_queue_maxsize()
+        self.queue: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
         self.worker_task = None
         self.processed_count = 0
         self.rejected_count = 0
@@ -28,12 +30,16 @@ class IngestionService:
         return get_database()
 
     @staticmethod
+    def _utcnow_naive() -> datetime:
+        return datetime.now(UTC).replace(tzinfo=None)
+
+    @staticmethod
     def packet_hash(packet: RawGPSPacket) -> str:
         payload = f"{packet.device_id}|{packet.timestamp.isoformat()}|{packet.latitude:.6f}|{packet.longitude:.6f}"
         return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
     def validate_packet(self, packet: RawGPSPacket) -> str:
-        now = datetime.utcnow()
+        now = self._utcnow_naive()
         ts = packet.timestamp.replace(tzinfo=None)
         if ts > now + timedelta(minutes=10):
             return "timestamp_too_far_future"
@@ -53,12 +59,16 @@ class IngestionService:
             self.rejected_count += 1
             return {"accepted": False, "deduplicated": False, "reason": reason, "packet_hash": p_hash}
 
+        if self.queue.full():
+            self.rejected_count += 1
+            return {"accepted": False, "deduplicated": False, "reason": "queue_full", "packet_hash": p_hash}
+
         await self.db.raw_packets.insert_one(
             {
                 "packet_hash": p_hash,
                 "payload": packet.model_dump(),
                 "status": "queued",
-                "created_at": datetime.utcnow(),
+                "created_at": self._utcnow_naive(),
             }
         )
         await self.queue.put((p_hash, packet))
@@ -76,6 +86,8 @@ class IngestionService:
             self.worker_task.cancel()
             try:
                 await self.worker_task
+            except asyncio.CancelledError:
+                pass
             except Exception:
                 pass
 
@@ -96,14 +108,14 @@ class IngestionService:
                 await gps_service.process_gps_data(gps)
                 await self.db.raw_packets.update_one(
                     {"packet_hash": p_hash},
-                    {"$set": {"status": "processed", "processed_at": datetime.utcnow()}},
+                    {"$set": {"status": "processed", "processed_at": self._utcnow_naive()}},
                 )
                 self.processed_count += 1
             except Exception as exc:
                 self.rejected_count += 1
                 await self.db.raw_packets.update_one(
                     {"packet_hash": p_hash},
-                    {"$set": {"status": "failed", "error": str(exc), "processed_at": datetime.utcnow()}},
+                    {"$set": {"status": "failed", "error": str(exc), "processed_at": self._utcnow_naive()}},
                 )
 
     def status(self) -> Dict[str, Any]:

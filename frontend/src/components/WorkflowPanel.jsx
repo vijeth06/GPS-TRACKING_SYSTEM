@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import {
   getOpsSnapshot,
   getIngestionStatus,
+  ingestRawPacket,
   onboardDevice,
   rotateDeviceCredential,
   getDeviceCredentialStatus,
