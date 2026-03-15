@@ -39,11 +39,14 @@ function AnalyticsDashboard({ selectedDevice, systemStats }) {
   const [analytics, setAnalytics] = useState(null)
   const [speedData, setSpeedData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const selectedDeviceId = selectedDevice?.device_id || ''
 
   // Fetch analytics when device is selected
   useEffect(() => {
+    let cancelled = false
+
     const fetchAnalytics = async () => {
-      if (!selectedDevice) {
+      if (!selectedDeviceId) {
         setAnalytics(null)
         setSpeedData(null)
         return
@@ -55,21 +58,27 @@ function AnalyticsDashboard({ selectedDevice, systemStats }) {
         const startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000) // Last 6 hours
 
         const [analyticsData, speedOverTime] = await Promise.all([
-          getDeviceAnalytics(selectedDevice.device_id, startTime, now),
-          getSpeedOverTime(selectedDevice.device_id, startTime, now, 5),
+          getDeviceAnalytics(selectedDeviceId, startTime, now),
+          getSpeedOverTime(selectedDeviceId, startTime, now, 5),
         ])
 
+        if (cancelled) return
         setAnalytics(analyticsData)
         setSpeedData(speedOverTime)
       } catch (error) {
+        if (cancelled) return
         console.error('Error fetching analytics:', error)
       } finally {
+        if (cancelled) return
         setLoading(false)
       }
     }
 
     fetchAnalytics()
-  }, [selectedDevice])
+    return () => {
+      cancelled = true
+    }
+  }, [selectedDeviceId])
 
   // Chart configuration
   const chartData = speedData?.data
