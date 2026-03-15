@@ -150,6 +150,48 @@ h1, h2, h3 {
   @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
 }
 
+/* Connection status pulse dot in Dashboard header */
+@keyframes pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.4); }
+}
+.pulse-animation {
+  animation: pulse-anim 1.5s ease-in-out infinite;
+}
+
+/* ===== Device marker connectivity ring animations ===== */
+
+/* Online: expanding pulse ring */
+@keyframes ring-pulse {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  60%  { transform: scale(1.65); opacity: 0.25; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* Delayed: slow amber throb */
+@keyframes ring-throb {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%       { transform: scale(1.35); opacity: 0.35; }
+}
+
+.marker-ring-pulse {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 3px solid #22c55e;
+  animation: ring-pulse 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
+.marker-ring-throb {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 3px solid #f59e0b;
+  animation: ring-throb 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
 @keyframes card-enter {
   from {
     opacity: 0;

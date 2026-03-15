@@ -78,16 +78,20 @@ async def get_unacknowledged_alerts(
 
 
 @router.post("/{alert_id}/acknowledge", response_model=AlertResponse, summary="Acknowledge alert")
-async def acknowledge_alert(alert_id: str):
+async def acknowledge_alert(
+    alert_id: str,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+):
     """
     Acknowledge an alert.
-    
+
     Args:
         alert_id: ID of the alert to acknowledge
-        
+
     Returns:
         Updated alert with acknowledgement status
     """
+    _ = current_user
     alert_service = AlertService()
     alert = await alert_service.acknowledge_alert(alert_id)
     

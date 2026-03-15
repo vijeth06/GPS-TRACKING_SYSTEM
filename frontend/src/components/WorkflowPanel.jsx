@@ -34,6 +34,9 @@ function WorkflowPanel({ role = 'viewer' }) {
   const canOperate = role === 'admin' || role === 'operator'
   const isAdmin = role === 'admin'
 
+  // track whether user is actively editing layers to avoid clobbering their input
+  const layerInputDirty = React.useRef(false)
+
   const refresh = async () => {
     try {
       const [opsData, ingestData, layersData] = await Promise.all([
@@ -46,7 +49,10 @@ function WorkflowPanel({ role = 'viewer' }) {
       setLayers(layersData)
       const [cfg, retention] = await Promise.all([getGeoserverConfig(), getRetentionStatus()])
       setGeoserverConfig(cfg)
-      setLayerInput((cfg.layer_names || []).join(', '))
+      // Only overwrite the text field if the user hasn't manually edited it
+      if (!layerInputDirty.current) {
+        setLayerInput((cfg.layer_names || []).join(', '))
+      }
       setRetentionStatus(retention)
     } catch (error) {
       setMessage(`Error: ${error?.response?.data?.detail || error.message}`)
@@ -398,7 +404,11 @@ function WorkflowPanel({ role = 'viewer' }) {
         <div className="mt-2 space-y-2">
           <input
             value={layerInput}
-            onChange={(e) => setLayerInput(e.target.value)}
+            onChange={(e) => {
+              layerInputDirty.current = true
+              setLayerInput(e.target.value)
+            }}
+            onBlur={() => { layerInputDirty.current = false }}
             placeholder="layer1, layer2"
             className="w-full px-2 py-1 rounded border border-gray-200"
           />

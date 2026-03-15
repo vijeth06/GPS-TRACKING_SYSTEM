@@ -9,7 +9,7 @@
  * Uses Leaflet.js with OpenStreetMap tiles.
  */
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, useMap, CircleMarker, Tooltip } from 'react-leaflet'
 import DeviceMarker from './DeviceMarker'
 import TrailLayer from './TrailLayer'
@@ -25,13 +25,14 @@ const DEFAULT_ZOOM = 12
  */
 function MapController({ selectedDevice, devices }) {
   const map = useMap()
+  const hasInitialFit = useRef(false)
 
   useEffect(() => {
     if (selectedDevice && selectedDevice.latest_location) {
       const { latitude, longitude } = selectedDevice.latest_location
       map.setView([latitude, longitude], 14, { animate: true })
-    } else if (devices.length > 0) {
-      // Fit bounds to show all devices
+    } else if (!hasInitialFit.current && devices.length > 0) {
+      // Fit bounds only once on initial load to show all devices
       const validDevices = devices.filter(
         (d) => d.latest_location?.latitude && d.latest_location?.longitude
       )
@@ -41,6 +42,7 @@ function MapController({ selectedDevice, devices }) {
           d.latest_location.longitude,
         ])
         map.fitBounds(bounds, { padding: [50, 50] })
+        hasInitialFit.current = true
       }
     }
   }, [selectedDevice, devices, map])
@@ -161,24 +163,28 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 right-4 md:right-auto md:w-[350px] bg-white/95 backdrop-blur p-3 rounded-xl shadow-lg border border-slate-200 z-[1000]">
+      <div className="absolute bottom-4 left-4 right-4 md:right-auto md:w-[370px] bg-white/95 backdrop-blur p-3 rounded-xl shadow-lg border border-slate-200 z-[1000]">
         <h4 className="text-xs font-semibold text-slate-800 mb-2 uppercase tracking-wide">Map Legend</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <p className="text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">Connectivity</p>
+            <p className="text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+              Connectivity <span className="normal-case font-normal text-slate-400">(ring + glow)</span>
+            </p>
             <div className="space-y-1">
-              <LegendItem color="bg-green-500" label="Online" />
-              <LegendItem color="bg-amber-500" label="Delayed" />
-              <LegendItem color="bg-gray-300" label="Offline" />
+              <LegendItem ring borderColor="border-green-500"  glowColor="shadow-[0_0_0_2px_#22c55e]" label="Online" pulse />
+              <LegendItem ring borderColor="border-amber-500"  glowColor="shadow-[0_0_0_2px_#f59e0b]" label="Delayed" />
+              <LegendItem ring borderColor="border-gray-400"   glowColor="shadow-[0_0_0_2px_#9ca3af]" label="Offline" />
             </div>
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">Movement</p>
+            <p className="text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+              Movement <span className="normal-case font-normal text-slate-400">(marker fill)</span>
+            </p>
             <div className="space-y-1">
-              <LegendItem color="bg-slate-500" label="Stationary" />
-              <LegendItem color="bg-amber-500" label="Slow (5-20 km/h)" />
-              <LegendItem color="bg-green-500" label="Normal (20-60 km/h)" />
-              <LegendItem color="bg-red-500" label="Fast (>60 km/h)" />
+              <LegendItem color="bg-slate-500"  label="Stationary" />
+              <LegendItem color="bg-amber-500"  label="Slow (5–20 km/h)" />
+              <LegendItem color="bg-green-500"  label="Normal (20–60 km/h)" />
+              <LegendItem color="bg-red-500"    label="Fast (>60 km/h)" />
             </div>
           </div>
         </div>
@@ -187,10 +193,19 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
   )
 }
 
-function LegendItem({ color, label }) {
+function LegendItem({ color, label, ring = false, borderColor = '', glowColor = '', pulse = false }) {
   return (
     <div className="flex items-center space-x-2">
-      <div className={`w-3 h-3 rounded-full ring-2 ring-white ${color}`} />
+      {ring ? (
+        <div className="relative flex items-center justify-center w-4 h-4">
+          {pulse && (
+            <div className={`absolute inset-0 rounded-full border-2 border-green-500 opacity-60 animate-ping`} />
+          )}
+          <div className={`w-3 h-3 rounded-full border-2 bg-white ${borderColor} ${glowColor}`} />
+        </div>
+      ) : (
+        <div className={`w-3 h-3 rounded-full ${color}`} />
+      )}
       <span className="text-xs text-slate-600">{label}</span>
     </div>
   )

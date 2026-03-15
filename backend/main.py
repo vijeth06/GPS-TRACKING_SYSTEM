@@ -19,6 +19,7 @@ It sets up:
 - API route registration
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
@@ -48,6 +49,7 @@ from backend.services.socket_manager import socket_manager
 from backend.services.ingestion_service import ingestion_service
 from backend.services.auth_service import AuthService
 from backend.services.retention_service import retention_service
+from backend.services.stream_listener_service import stream_listener_service
 
 
 # =============================================================================
@@ -119,11 +121,17 @@ async def lifespan(app: FastAPI):
     # Start queue worker for raw stream ingestion
     await ingestion_service.start_worker()
     await retention_service.start_scheduler()
-    
+
+    stream_autostart = os.getenv("STREAM_AUTOSTART", "false").strip().lower() in ["1", "true", "yes", "on"]
+    if stream_autostart:
+        await stream_listener_service.start()
+        print("Stream listener started from environment configuration")
+
     yield
-    
+
     # Shutdown
     print("Shutting down GPS Tracking System...")
+    await stream_listener_service.stop()
     await ingestion_service.stop_worker()
     await retention_service.stop_scheduler()
     await close_db()

@@ -9,9 +9,9 @@ import { Truck, Circle } from 'lucide-react'
 
 // Connectivity colors and labels
 const CONNECTIVITY_CONFIG = {
-  online: { color: 'bg-green-500', label: 'Online' },
-  delayed: { color: 'bg-yellow-500', label: 'Delayed' },
-  offline: { color: 'bg-gray-300', label: 'Offline' },
+  online:  { color: 'bg-green-500', label: 'Online' },
+  delayed: { color: 'bg-amber-500',  label: 'Delayed' },
+  offline: { color: 'bg-gray-400',   label: 'Offline' },
 }
 
 const MOVEMENT_LABELS = {

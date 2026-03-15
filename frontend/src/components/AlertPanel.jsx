@@ -72,8 +72,14 @@ function formatTimestamp(timestamp) {
 function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, selectedAlertId = '', onSelectAlert }) {
   const [busyId, setBusyId] = React.useState('')
   const [assignees, setAssignees] = React.useState({})
+  const [actionError, setActionError] = React.useState('')
 
   const canOperate = role === 'admin' || role === 'operator'
+
+  const showError = (msg) => {
+    setActionError(msg)
+    setTimeout(() => setActionError(''), 4000)
+  }
 
   const emitChange = (alert) => {
     if (onAlertChanged) {
@@ -89,6 +95,7 @@ function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, se
       emitChange(updated)
     } catch (error) {
       console.error('Error acknowledging alert:', error)
+      showError('Failed to acknowledge alert. Check your connection or permissions.')
     } finally {
       setBusyId('')
     }
@@ -96,13 +103,18 @@ function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, se
 
   const handleAssign = async (alert, e) => {
     e.stopPropagation()
+    const assignee = (assignees[alert.id] || '').trim() || username.trim()
+    if (!assignee || assignee.length < 2) {
+      showError('Enter a name (min 2 characters) in the "Assign to" field.')
+      return
+    }
     setBusyId(alert.id)
     try {
-      const assignee = (assignees[alert.id] || '').trim() || username
       const updated = await assignAlert(alert.id, assignee, 'Assigned from alert panel')
       emitChange(updated)
     } catch (error) {
       console.error('Error assigning alert:', error)
+      showError('Failed to assign alert. Check your permissions.')
     } finally {
       setBusyId('')
     }
@@ -116,6 +128,7 @@ function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, se
       emitChange(updated)
     } catch (error) {
       console.error('Error escalating alert:', error)
+      showError('Failed to escalate alert. Check your permissions.')
     } finally {
       setBusyId('')
     }
@@ -129,6 +142,7 @@ function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, se
       emitChange(updated)
     } catch (error) {
       console.error('Error resolving alert:', error)
+      showError('Failed to resolve alert. Check your permissions.')
     } finally {
       setBusyId('')
     }
@@ -145,6 +159,11 @@ function AlertPanel({ alerts, role = 'viewer', username = '', onAlertChanged, se
 
   return (
     <div className="space-y-2">
+      {actionError && (
+        <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+          {actionError}
+        </div>
+      )}
       {alerts.slice(0, 20).map((alert) => {
         const config = ALERT_CONFIG[alert.alert_type] || ALERT_CONFIG.default
         const Icon = config.icon

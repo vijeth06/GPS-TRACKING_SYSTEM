@@ -43,9 +43,9 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
   const [newPassword, setNewPassword] = useState('ops123')
   const [teamName, setTeamName] = useState('Ops Alpha')
 
-  const refreshAll = async () => {
+  const refreshAll = async (showBusy = false) => {
     try {
-      setBusy(true)
+      if (showBusy) setBusy(true)
       setMessage('')
       const [
         channelData,
@@ -87,7 +87,8 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
   }
 
   useEffect(() => {
-    refreshAll()
+    // Background refresh — don't disable buttons unnecessarily
+    refreshAll(false)
   }, [selectedDevice?.device_id])
 
   const onSaveChannel = async () => {
@@ -223,7 +224,7 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
         <button
           type="button"
           disabled={busy}
-          onClick={refreshAll}
+          onClick={() => refreshAll(true)}
           className="px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-colors disabled:opacity-60"
         >
           Refresh

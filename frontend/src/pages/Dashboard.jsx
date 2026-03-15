@@ -87,6 +87,10 @@ function Dashboard() {
       try {
         await socketService.connect()
         setIsConnected(true)
+
+        // Track live disconnect / reconnect events
+        socketService.socket?.on('disconnect', () => setIsConnected(false))
+        socketService.socket?.on('connect',    () => setIsConnected(true))
       } catch (error) {
         console.error('Socket connection failed:', error)
         setIsConnected(false)
@@ -97,6 +101,7 @@ function Dashboard() {
 
     return () => {
       socketService.disconnect()
+      setIsConnected(false)
     }
   }, [])
 
@@ -154,16 +159,23 @@ function Dashboard() {
   const handleAlertChanged = useCallback((updatedAlert) => {
     if (!updatedAlert?.id) return
 
-    setAlerts((prevAlerts) =>
-      prevAlerts.map((alert) => (alert.id === updatedAlert.id ? { ...alert, ...updatedAlert } : alert))
-    )
+    setAlerts((prevAlerts) => {
+      const prev = prevAlerts.find((a) => a.id === updatedAlert.id)
+      const wasUnacked = prev && !prev.is_acknowledged
+      const nowAcked = updatedAlert.is_acknowledged
 
-    if (updatedAlert.is_acknowledged) {
-      setSystemStats((prev) => ({
-        ...prev,
-        unacknowledged_alerts: Math.max(0, prev.unacknowledged_alerts - 1),
-      }))
-    }
+      // Only decrement counter when transitioning from un-acked → acked
+      if (wasUnacked && nowAcked) {
+        setSystemStats((s) => ({
+          ...s,
+          unacknowledged_alerts: Math.max(0, s.unacknowledged_alerts - 1),
+        }))
+      }
+
+      return prevAlerts.map((alert) =>
+        alert.id === updatedAlert.id ? { ...alert, ...updatedAlert } : alert
+      )
+    })
   }, [])
 
   return (

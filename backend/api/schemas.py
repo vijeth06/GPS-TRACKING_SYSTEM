@@ -548,3 +548,35 @@ class AnomalyInsight(BaseModel):
     anomaly_score: float
     reason: str
     measured_at: datetime
+
+
+class StreamListenerStartRequest(BaseModel):
+    protocol: Optional[str] = Field(None, description="udp or tcp")
+    host: Optional[str] = Field(None, description="bind host")
+    port: Optional[int] = Field(None, ge=1, le=65535)
+
+
+class StreamListenerStatus(BaseModel):
+    running: bool
+    protocol: str
+    host: str
+    port: int
+    received_count: int
+    parsed_count: int
+    rejected_count: int
+    last_packet_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+
+
+class GeoserverEndpointHealth(BaseModel):
+    wfs_url: Optional[str] = None
+    wms_url: Optional[str] = None
+    wfs_ok: Optional[bool] = None
+    wms_ok: Optional[bool] = None
+    wfs_status_code: Optional[int] = None
+    wms_status_code: Optional[int] = None
+
+
+class GeoserverDiscoveredLayers(BaseModel):
+    layer_names: List[str] = []
+    source: str = "wfs_get_capabilities"

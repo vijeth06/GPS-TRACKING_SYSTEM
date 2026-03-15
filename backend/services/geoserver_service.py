@@ -6,7 +6,8 @@ Sync WFS geofence layers and expose WMS/WFS metadata.
 
 import os
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import xml.etree.ElementTree as ET
 
 import httpx
 
@@ -45,6 +46,84 @@ class GeoserverService:
             "has_runtime_override": bool(config),
             "wfs_reachable": reachable,
         }
+
+    async def _request(self, url: str, params: Optional[Dict[str, Any]] = None) -> Optional[httpx.Response]:
+        if not url:
+            return None
+        async with httpx.AsyncClient(timeout=15) as client:
+            return await client.get(url, params=params)
+
+    async def check_endpoint_health(self) -> Dict[str, Any]:
+        wfs_ok = None
+        wms_ok = None
+        wfs_status_code = None
+        wms_status_code = None
+
+        if self.wfs_url:
+            try:
+                wfs_resp = await self._request(
+                    self.wfs_url,
+                    {"service": "WFS", "request": "GetCapabilities"},
+                )
+                if wfs_resp is not None:
+                    wfs_status_code = wfs_resp.status_code
+                    wfs_ok = wfs_resp.status_code < 400
+            except Exception:
+                wfs_ok = False
+
+        if self.wms_url:
+            try:
+                wms_resp = await self._request(
+                    self.wms_url,
+                    {"service": "WMS", "request": "GetCapabilities"},
+                )
+                if wms_resp is not None:
+                    wms_status_code = wms_resp.status_code
+                    wms_ok = wms_resp.status_code < 400
+            except Exception:
+                wms_ok = False
+
+        return {
+            "wfs_url": self.wfs_url or None,
+            "wms_url": self.wms_url or None,
+            "wfs_ok": wfs_ok,
+            "wms_ok": wms_ok,
+            "wfs_status_code": wfs_status_code,
+            "wms_status_code": wms_status_code,
+        }
+
+    async def discover_layers(self) -> Dict[str, Any]:
+        if not self.wfs_url:
+            return {"layer_names": [], "source": "wfs_get_capabilities"}
+
+        try:
+            resp = await self._request(
+                self.wfs_url,
+                {"service": "WFS", "request": "GetCapabilities"},
+            )
+            if resp is None:
+                return {"layer_names": [], "source": "wfs_get_capabilities"}
+            resp.raise_for_status()
+
+            root = ET.fromstring(resp.text)
+            names = set()
+
+            for element in root.findall(".//{*}FeatureType/{*}Name"):
+                text = (element.text or "").strip()
+                if text:
+                    names.add(text)
+
+            # Fallback for non-standard capabilities variants.
+            if not names:
+                for element in root.findall(".//{*}Name"):
+                    text = (element.text or "").strip()
+                    if ":" in text:
+                        names.add(text)
+
+            discovered = sorted(names)
+            return {"layer_names": discovered, "source": "wfs_get_capabilities"}
+        except Exception:
+            return {"layer_names": [], "source": "wfs_get_capabilities"}
 
     async def update_layer_names(self, layer_names: List[str]) -> Dict[str, Any]:
         cleaned = [str(l).strip() for l in layer_names if str(l).strip()]
