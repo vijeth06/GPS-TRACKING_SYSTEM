@@ -12,20 +12,62 @@ import { Polyline, CircleMarker, Tooltip } from 'react-leaflet'
 const TRAIL_COLOR = '#2563eb' // Blue
 const TRAIL_START_COLOR = '#22c55e' // Green
 const TRAIL_END_COLOR = '#ef4444' // Red
+const MAX_RENDER_POINTS = 180
+const MAX_SEGMENT_JUMP_KM = 0.8
+
+function haversineKm(aLat, aLng, bLat, bLng) {
+  const toRad = (deg) => (deg * Math.PI) / 180
+  const R = 6371
+  const dLat = toRad(bLat - aLat)
+  const dLng = toRad(bLng - aLng)
+  const aa =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa))
+  return R * c
+}
 
 function TrailLayer({ trail }) {
   if (!trail || !trail.points || trail.points.length < 2) {
     return null
   }
 
+  // Keep rendering lightweight and readable for long trails.
+  const stride = Math.max(1, Math.ceil(trail.points.length / MAX_RENDER_POINTS))
+  const sampledPoints = trail.points.filter(
+    (point, index) => index % stride === 0 || index === trail.points.length - 1
+  )
+
+  // Drop invalid points and large GPS glitches that create fan-like spikes.
+  const cleanPoints = []
+  for (const point of sampledPoints) {
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) {
+      continue
+    }
+    if (cleanPoints.length === 0) {
+      cleanPoints.push(point)
+      continue
+    }
+    const prev = cleanPoints[cleanPoints.length - 1]
+    const jumpKm = haversineKm(prev.lat, prev.lng, point.lat, point.lng)
+    if (jumpKm <= MAX_SEGMENT_JUMP_KM) {
+      cleanPoints.push(point)
+    }
+  }
+
+  if (cleanPoints.length < 2) {
+    return null
+  }
+
   // Convert points to position array
-  const positions = trail.points.map((point) => [point.lat, point.lng])
+  const positions = cleanPoints.map((point) => [point.lat, point.lng])
 
   // Calculate trail segments with speed-based coloring
   const segments = []
-  for (let i = 1; i < trail.points.length; i++) {
-    const startPoint = trail.points[i - 1]
-    const endPoint = trail.points[i]
+  for (let i = 1; i < cleanPoints.length; i++) {
+    const startPoint = cleanPoints[i - 1]
+    const endPoint = cleanPoints[i]
     const speed = endPoint.speed || 0
     
     // Color based on speed
@@ -51,8 +93,8 @@ function TrailLayer({ trail }) {
   }
 
   // Start and end points
-  const startPoint = trail.points[0]
-  const endPoint = trail.points[trail.points.length - 1]
+  const startPoint = cleanPoints[0]
+  const endPoint = cleanPoints[cleanPoints.length - 1]
 
   return (
     <>
@@ -61,8 +103,8 @@ function TrailLayer({ trail }) {
         positions={positions}
         pathOptions={{
           color: '#ffffff',
-          weight: 9,
-          opacity: 0.92,
+          weight: 6,
+          opacity: 0.9,
           lineCap: 'round',
           lineJoin: 'round',
         }}
@@ -73,8 +115,8 @@ function TrailLayer({ trail }) {
         positions={positions}
         pathOptions={{
           color: TRAIL_COLOR,
-          weight: 5,
-          opacity: 0.85,
+          weight: 3,
+          opacity: 0.7,
           lineCap: 'round',
           lineJoin: 'round',
         }}
@@ -87,8 +129,8 @@ function TrailLayer({ trail }) {
           positions={segment.positions}
           pathOptions={{
             color: segment.color,
-            weight: 6,
-            opacity: 0.96,
+            weight: 3.5,
+            opacity: 0.9,
             lineCap: 'round',
             lineJoin: 'round',
           }}
@@ -136,7 +178,7 @@ function TrailLayer({ trail }) {
           </div>
           <div className="text-sm">
             <span className="text-gray-600">Points:</span>
-            <span className="ml-2 font-semibold">{trail.points.length}</span>
+            <span className="ml-2 font-semibold">{cleanPoints.length} / {trail.points.length}</span>
           </div>
         </div>
       )}
