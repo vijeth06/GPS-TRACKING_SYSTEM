@@ -19,7 +19,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { 
-  MapPin, Activity, AlertTriangle, Truck, Gauge, Bell, ShieldCheck, Route, SearchCheck, Wrench, LayoutGrid
+  MapPin, Activity, AlertTriangle, Truck, Gauge, Bell, ShieldCheck, Route, SearchCheck, Wrench, LayoutGrid, Radar, Siren, Settings2
 } from 'lucide-react'
 import MapView from '../components/MapView'
 import DeviceList from '../components/DeviceList'
@@ -51,6 +51,8 @@ function Dashboard() {
   const [replayPoint, setReplayPoint] = useState(null)
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [workspaceTab, setWorkspaceTab] = useState('all')
+  const [activeView, setActiveView] = useState('overview')
+  const [overviewRailTab, setOverviewRailTab] = useState('devices')
 
   // Initial data fetch
   useEffect(() => {
@@ -256,31 +258,118 @@ function Dashboard() {
 
       {/* Main Content */}
       <main className="px-4 pb-6 pt-4 md:px-6">
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-230px)] min-h-[720px]">
-          {/* Map Section - Takes 3/4 on large screens */}
-          <div className="xl:col-span-8 panel-card p-2 overflow-hidden">
-            {loading ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-gray-500">Loading map...</div>
-              </div>
-            ) : (
-              <MapView
-                devices={devices}
-                selectedDevice={selectedDevice}
-                geofences={geofences}
-                onDeviceSelect={handleDeviceSelect}
-                replayPoint={replayPoint}
-              />
-            )}
+        <div className="panel-card p-2 md:p-3 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <PrimaryNavButton
+              active={activeView === 'overview'}
+              onClick={() => setActiveView('overview')}
+              icon={<Radar className="w-4 h-4" />}
+              title="Overview"
+              subtitle="Map + quick controls"
+            />
+            <PrimaryNavButton
+              active={activeView === 'devices'}
+              onClick={() => setActiveView('devices')}
+              icon={<Truck className="w-4 h-4" />}
+              title="Devices"
+              subtitle="Fleet and telemetry"
+            />
+            <PrimaryNavButton
+              active={activeView === 'alerts'}
+              onClick={() => setActiveView('alerts')}
+              icon={<Siren className="w-4 h-4" />}
+              title="Alerts"
+              subtitle="Triage and incident"
+            />
+            <PrimaryNavButton
+              active={activeView === 'operations'}
+              onClick={() => setActiveView('operations')}
+              icon={<Settings2 className="w-4 h-4" />}
+              title="Operations"
+              subtitle="Workflow and advanced"
+            />
           </div>
+        </div>
 
-          {/* Right Panel - Analytics, Devices, Alerts */}
-          <div className="xl:col-span-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-1">
-            {/* Device List */}
-            <div className="panel-card p-4 max-h-[300px] overflow-auto custom-scrollbar">
+        {activeView === 'overview' && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-290px)] min-h-[680px]">
+            <div className="xl:col-span-8 panel-card p-2 overflow-hidden">
+              {loading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-gray-500">Loading map...</div>
+                </div>
+              ) : (
+                <MapView
+                  devices={devices}
+                  selectedDevice={selectedDevice}
+                  geofences={geofences}
+                  onDeviceSelect={handleDeviceSelect}
+                  replayPoint={replayPoint}
+                />
+              )}
+            </div>
+
+            <div className="xl:col-span-4 panel-card p-3 overflow-hidden flex flex-col">
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <WorkspaceTabButton
+                  active={overviewRailTab === 'devices'}
+                  onClick={() => setOverviewRailTab('devices')}
+                  icon={<Truck className="w-4 h-4" />}
+                  label="Devices"
+                />
+                <WorkspaceTabButton
+                  active={overviewRailTab === 'analytics'}
+                  onClick={() => setOverviewRailTab('analytics')}
+                  icon={<Gauge className="w-4 h-4" />}
+                  label="Analytics"
+                />
+                <WorkspaceTabButton
+                  active={overviewRailTab === 'alerts'}
+                  onClick={() => setOverviewRailTab('alerts')}
+                  icon={<Bell className="w-4 h-4" />}
+                  label="Alerts"
+                />
+              </div>
+
+              <div className="flex-1 overflow-auto custom-scrollbar pr-1">
+                {overviewRailTab === 'devices' && (
+                  <DeviceList
+                    devices={devices}
+                    selectedDevice={selectedDevice}
+                    onDeviceSelect={handleDeviceSelect}
+                  />
+                )}
+                {overviewRailTab === 'analytics' && (
+                  <AnalyticsDashboard
+                    selectedDevice={selectedDevice}
+                    systemStats={systemStats}
+                  />
+                )}
+                {overviewRailTab === 'alerts' && (
+                  <AlertPanel
+                    alerts={alerts}
+                    role={user?.role}
+                    username={user?.username || ''}
+                    onAlertChanged={handleAlertChanged}
+                    selectedAlertId={selectedAlert?.id || ''}
+                    onSelectAlert={(alert) => {
+                      setSelectedAlert(alert)
+                      setWorkspaceTab('incident')
+                      setActiveView('alerts')
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeView === 'devices' && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-290px)] min-h-[680px]">
+            <div className="xl:col-span-4 panel-card p-4 overflow-auto custom-scrollbar">
               <h2 className="panel-title mb-3 flex items-center">
                 <Truck className="w-5 h-5 mr-2 text-amber-600" />
-                Devices
+                Device Directory
               </h2>
               <DeviceList
                 devices={devices}
@@ -289,23 +378,37 @@ function Dashboard() {
               />
             </div>
 
-            {/* Analytics */}
-            <div className="panel-card p-4 overflow-auto custom-scrollbar">
-              <h2 className="panel-title mb-3 flex items-center">
-                <Gauge className="w-5 h-5 mr-2 text-emerald-600" />
-                Analytics
-              </h2>
-              <AnalyticsDashboard
-                selectedDevice={selectedDevice}
-                systemStats={systemStats}
-              />
+            <div className="xl:col-span-8 flex flex-col gap-4 overflow-hidden">
+              <div className="panel-card p-4 overflow-auto custom-scrollbar">
+                <h2 className="panel-title mb-3 flex items-center">
+                  <Gauge className="w-5 h-5 mr-2 text-emerald-600" />
+                  Telemetry Analytics
+                </h2>
+                <AnalyticsDashboard
+                  selectedDevice={selectedDevice}
+                  systemStats={systemStats}
+                />
+              </div>
+              <div className="panel-card p-4 overflow-auto custom-scrollbar">
+                <h2 className="panel-title mb-3 flex items-center">
+                  <Route className="w-5 h-5 mr-2 text-sky-600" />
+                  Route Replay
+                </h2>
+                <RouteReplayTimeline
+                  selectedDevice={selectedDevice}
+                  onReplayPointChange={setReplayPoint}
+                />
+              </div>
             </div>
+          </div>
+        )}
 
-            {/* Alerts */}
-            <div className="panel-card p-4 max-h-[260px] overflow-auto custom-scrollbar">
+        {activeView === 'alerts' && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-290px)] min-h-[680px]">
+            <div className="xl:col-span-5 panel-card p-4 overflow-auto custom-scrollbar">
               <h2 className="panel-title mb-3 flex items-center">
                 <Bell className="w-5 h-5 mr-2 text-rose-600" />
-                Alerts
+                Alert Feed
                 {systemStats.unacknowledged_alerts > 0 && (
                   <span className="ml-2 bg-rose-500 text-white text-xs rounded-full px-2 py-1">
                     {systemStats.unacknowledged_alerts}
@@ -324,13 +427,24 @@ function Dashboard() {
                 }}
               />
             </div>
+            <div className="xl:col-span-7 panel-card p-4 overflow-auto custom-scrollbar">
+              <h2 className="panel-title mb-3 flex items-center">
+                <SearchCheck className="w-5 h-5 mr-2 text-sky-600" />
+                Incident Workspace
+              </h2>
+              <IncidentWorkspace selectedAlert={selectedAlert} />
+            </div>
+          </div>
+        )}
 
-            <div className="panel-card p-4 overflow-hidden">
+        {activeView === 'operations' && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-290px)] min-h-[680px]">
+            <div className="xl:col-span-4 panel-card p-4 overflow-hidden">
               <h2 className="panel-title mb-3 flex items-center">
                 <ShieldCheck className="w-5 h-5 mr-2 text-sky-600" />
-                Operations Workspace
+                Operations Navigation
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 <WorkspaceTabButton
                   active={workspaceTab === 'all'}
                   onClick={() => setWorkspaceTab('all')}
@@ -362,43 +476,64 @@ function Dashboard() {
                   label="Advanced"
                 />
               </div>
-              <p className="text-[11px] text-slate-500 mb-2">
-                Tip: Use <strong>All</strong> to see every workspace function together.
+              <p className="text-xs text-slate-500">
+                Each section is isolated here for smoother operation and lower visual noise.
               </p>
+            </div>
 
-              <div className="max-h-[420px] overflow-auto custom-scrollbar pr-1">
-                {workspaceTab === 'all' && (
-                  <div className="space-y-3">
-                    <RouteReplayTimeline
-                      selectedDevice={selectedDevice}
-                      onReplayPointChange={setReplayPoint}
-                    />
-                    <IncidentWorkspace selectedAlert={selectedAlert} />
-                    <WorkflowPanel role={user?.role} />
-                    <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
-                  </div>
-                )}
-                {workspaceTab === 'replay' && (
+            <div className="xl:col-span-8 panel-card p-4 overflow-auto custom-scrollbar">
+              {workspaceTab === 'all' && (
+                <div className="space-y-3">
                   <RouteReplayTimeline
                     selectedDevice={selectedDevice}
                     onReplayPointChange={setReplayPoint}
                   />
-                )}
-                {workspaceTab === 'incident' && (
                   <IncidentWorkspace selectedAlert={selectedAlert} />
-                )}
-                {workspaceTab === 'workflow' && (
                   <WorkflowPanel role={user?.role} />
-                )}
-                {workspaceTab === 'advanced' && (
                   <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
-                )}
-              </div>
+                </div>
+              )}
+              {workspaceTab === 'replay' && (
+                <RouteReplayTimeline
+                  selectedDevice={selectedDevice}
+                  onReplayPointChange={setReplayPoint}
+                />
+              )}
+              {workspaceTab === 'incident' && (
+                <IncidentWorkspace selectedAlert={selectedAlert} />
+              )}
+              {workspaceTab === 'workflow' && (
+                <WorkflowPanel role={user?.role} />
+              )}
+              {workspaceTab === 'advanced' && (
+                <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
+              )}
             </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
+  )
+}
+
+function PrimaryNavButton({ active, onClick, icon, title, subtitle }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'text-left rounded-xl border px-3 py-2.5 transition-colors',
+        active
+          ? 'bg-slate-900 text-white border-slate-900'
+          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50',
+      ].join(' ')}
+    >
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <p className={active ? 'text-[11px] mt-1 text-slate-300' : 'text-[11px] mt-1 text-slate-500'}>{subtitle}</p>
+    </button>
   )
 }
 
