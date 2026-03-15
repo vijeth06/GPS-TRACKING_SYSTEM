@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import {
   getOpsSnapshot,
   getIngestionStatus,
-  ingestRawPacket,
   onboardDevice,
   rotateDeviceCredential,
   getDeviceCredentialStatus,
@@ -11,8 +10,6 @@ import {
   updateGeoserverLayers,
   clearGeoserverCache,
   syncGeoserverLayers,
-  triggerDemoGeofence,
-  triggerDemoStationary,
   getRetentionStatus,
   runRetentionNow,
 } from '../services/api'
@@ -24,7 +21,7 @@ function WorkflowPanel({ role = 'viewer' }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [onboardDeviceId, setOnboardDeviceId] = useState('TRK_UI_01')
-  const [onboardName, setOnboardName] = useState('UI Demo Tracker')
+  const [onboardName, setOnboardName] = useState('Fleet Tracker')
   const [onboardType, setOnboardType] = useState('vehicle')
   const [issuedApiKey, setIssuedApiKey] = useState('')
   const [credentialStatus, setCredentialStatus] = useState(null)
@@ -81,29 +78,6 @@ function WorkflowPanel({ role = 'viewer' }) {
   useEffect(() => {
     refreshCredentialStatus(onboardDeviceId)
   }, [onboardDeviceId])
-
-  const runSampleIngest = async () => {
-    setBusy(true)
-    setMessage('')
-    try {
-      const now = new Date()
-      const packet = {
-        device_id: 'TRK_UI_01',
-        latitude: 11.0168,
-        longitude: 76.9558,
-        timestamp: now.toISOString(),
-        speed: 32.4,
-        source: 'ui_workflow_panel',
-      }
-      const result = await ingestRawPacket(packet)
-      setMessage(`Ingest accepted=${result.accepted} dedup=${result.deduplicated}`)
-      await refresh()
-    } catch (error) {
-      setMessage(`Ingest failed: ${error?.response?.data?.detail || error.message}`)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const runOnboard = async () => {
     setBusy(true)
@@ -233,32 +207,6 @@ function WorkflowPanel({ role = 'viewer' }) {
     }
   }
 
-  const runDemoGeofence = async () => {
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await triggerDemoGeofence()
-      setMessage(result.details)
-    } catch (error) {
-      setMessage(`Demo failed: ${error?.response?.data?.detail || error.message}`)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const runDemoStationary = async () => {
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await triggerDemoStationary('TRK101')
-      setMessage(result.details)
-    } catch (error) {
-      setMessage(`Demo failed: ${error?.response?.data?.detail || error.message}`)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <div className="space-y-3 text-sm">
       <div className="flex items-center justify-between">
@@ -356,35 +304,11 @@ function WorkflowPanel({ role = 'viewer' }) {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={busy || !canOperate}
-          onClick={runSampleIngest}
-          className="px-2 py-1 rounded bg-blue-600 text-white disabled:opacity-60"
-        >
-          Test Ingest
-        </button>
-        <button
-          type="button"
           disabled={busy || !isAdmin}
           onClick={runSync}
           className="px-2 py-1 rounded bg-purple-600 text-white disabled:opacity-60"
         >
           Sync GeoServer
-        </button>
-        <button
-          type="button"
-          disabled={busy || !isAdmin}
-          onClick={runDemoGeofence}
-          className="px-2 py-1 rounded bg-amber-600 text-white disabled:opacity-60"
-        >
-          Demo Geofence
-        </button>
-        <button
-          type="button"
-          disabled={busy || !isAdmin}
-          onClick={runDemoStationary}
-          className="px-2 py-1 rounded bg-emerald-600 text-white disabled:opacity-60"
-        >
-          Demo Stationary
         </button>
       </div>
 

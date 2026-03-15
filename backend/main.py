@@ -34,7 +34,6 @@ from backend.api.auth_routes import router as auth_router
 from backend.api.ingest_routes import router as ingest_router
 from backend.api.geoserver_routes import router as geoserver_router
 from backend.api.ops_routes import router as ops_router
-from backend.api.demo_routes import router as demo_router
 from backend.api.incident_routes import router as incident_router
 from backend.api.retention_routes import router as retention_router
 from backend.api.notification_routes import router as notification_router
@@ -114,9 +113,9 @@ async def lifespan(app: FastAPI):
     # Initialize MongoDB connection
     await init_db()
     print("MongoDB connection established")
-    
-    # Initialize sample data if needed
-    await init_sample_data()
+
+    # Ensure default admin exists; do not seed mock/sample devices.
+    await AuthService().ensure_default_admin()
 
     # Start queue worker for raw stream ingestion
     await ingestion_service.start_worker()
@@ -135,32 +134,6 @@ async def lifespan(app: FastAPI):
     await ingestion_service.stop_worker()
     await retention_service.stop_scheduler()
     await close_db()
-
-
-async def init_sample_data():
-    """Initialize sample data for development."""
-    from backend.models.device import create_device_document
-    
-    db = get_database()
-    auth = AuthService()
-    try:
-        await auth.ensure_default_admin()
-
-        # Check if devices exist
-        existing = await db.devices.find_one()
-        if not existing:
-            # Create sample devices
-            sample_devices = [
-                create_device_document(device_id="TRK101", device_name="Delivery Truck 1", device_type="vehicle"),
-                create_device_document(device_id="TRK102", device_name="Delivery Truck 2", device_type="vehicle"),
-                create_device_document(device_id="TRK103", device_name="Service Van 1", device_type="vehicle"),
-                create_device_document(device_id="TRK104", device_name="Service Van 2", device_type="vehicle"),
-                create_device_document(device_id="TRK105", device_name="Executive Car", device_type="vehicle"),
-            ]
-            await db.devices.insert_many(sample_devices)
-            print("Sample devices created")
-    except Exception as e:
-        print(f"Sample data initialization note: {e}")
 
 
 # Create FastAPI app
@@ -209,7 +182,6 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(ingest_router, prefix="/api")
 app.include_router(geoserver_router, prefix="/api")
 app.include_router(ops_router, prefix="/api")
-app.include_router(demo_router, prefix="/api")
 app.include_router(incident_router, prefix="/api")
 app.include_router(retention_router, prefix="/api")
 app.include_router(notification_router, prefix="/api")

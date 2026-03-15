@@ -322,24 +322,6 @@ export const syncGeoserverLayers = async () => {
   return response.data
 }
 
-/**
- * Trigger demo geofence violation setup
- */
-export const triggerDemoGeofence = async () => {
-  const response = await api.post('/demo/geofence-violation')
-  return response.data
-}
-
-/**
- * Trigger demo stationary behavior setup
- */
-export const triggerDemoStationary = async (deviceId = 'TRK101') => {
-  const response = await api.post('/demo/stationary', null, {
-    params: { device_id: deviceId },
-  })
-  return response.data
-}
-
 export const getOpenIncidents = async (limit = 20) => {
   const response = await api.get('/incidents/open', { params: { limit } })
   return response.data
