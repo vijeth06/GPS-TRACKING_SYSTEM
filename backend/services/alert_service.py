@@ -418,19 +418,16 @@ class AlertService:
     
     async def get_alert_statistics(self) -> Dict[str, Any]:
         """Get alert statistics."""
-        # Count by type
         type_pipeline = [
             {"$group": {"_id": "$alert_type", "count": {"$sum": 1}}}
         ]
         type_results = await self.db.alerts.aggregate(type_pipeline).to_list(length=100)
         
-        # Count by severity
         severity_pipeline = [
             {"$group": {"_id": "$severity", "count": {"$sum": 1}}}
         ]
         severity_results = await self.db.alerts.aggregate(severity_pipeline).to_list(length=100)
         
-        # Total counts
         total = await self.db.alerts.count_documents({})
         unacknowledged = await self.db.alerts.count_documents({"is_acknowledged": False})
         

@@ -20,20 +20,12 @@ from typing import List, Tuple, Optional
 import json
 
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
 
 API_URL = "http://localhost:8000/api/gps"
 UPDATE_INTERVAL = 2  # seconds
 
 
-# =============================================================================
-# ROUTE DEFINITIONS
-# =============================================================================
 
-# Predefined routes around Coimbatore, India
-# Each route is a list of (lat, lng) waypoints
 
 ROUTES = {
     "route_1": [  # Main city route
@@ -170,7 +162,6 @@ def interpolate_position(
 
 def update_route_follower(device: RouteFollower, time_seconds: float) -> None:
     """Update device position along route."""
-    # Handle stops
     if device.is_stopped:
         device.stop_timer -= 1
         if device.stop_timer <= 0:
@@ -180,36 +171,30 @@ def update_route_follower(device: RouteFollower, time_seconds: float) -> None:
             device.speed = 0
             return
     
-    # Random stop chance
     if random.random() < 0.03:
         device.is_stopped = True
         device.stop_timer = random.randint(2, 8)
         device.speed = 0
         return
     
-    # Get current and next waypoint
     current_point = device.route_points[device.current_index]
     next_index = (device.current_index + 1) % len(device.route_points)
     next_point = device.route_points[next_index]
     
-    # Calculate distance to next waypoint
     segment_distance = calculate_distance(
         current_point[0], current_point[1],
         next_point[0], next_point[1]
     )
     
-    # Calculate speed with variation
     speed_variation = random.uniform(-10, 10)
     device.speed = max(5, min(100, device.base_speed + speed_variation))
     
-    # Calculate movement
     distance_traveled = (device.speed / 3600) * time_seconds  # km
     
     if segment_distance > 0:
         progress_increment = distance_traveled / segment_distance
         device.progress += progress_increment
     
-    # Move to next segment if needed
     while device.progress >= 1.0:
         device.progress -= 1.0
         device.current_index = next_index
@@ -217,14 +202,12 @@ def update_route_follower(device: RouteFollower, time_seconds: float) -> None:
         current_point = device.route_points[device.current_index]
         next_point = device.route_points[next_index]
     
-    # Interpolate current position
     device.latitude, device.longitude = interpolate_position(
         current_point[0], current_point[1],
         next_point[0], next_point[1],
         device.progress
     )
     
-    # Calculate heading
     device.heading = calculate_bearing(
         device.latitude, device.longitude,
         next_point[0], next_point[1]
@@ -254,7 +237,6 @@ def create_devices() -> List[RouteFollower]:
     """Create devices following different routes."""
     devices = []
     
-    # Create route followers
     route_configs = [
         ("TRK101", "City Delivery 1", "route_1", 45),
         ("TRK102", "City Delivery 2", "route_1", 35),
@@ -267,7 +249,6 @@ def create_devices() -> List[RouteFollower]:
     
     for device_id, name, route_name, speed in route_configs:
         route_points = ROUTES[route_name]
-        # Start at random point in route
         start_index = random.randint(0, len(route_points) - 1)
         
         device = RouteFollower(

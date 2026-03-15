@@ -94,5 +94,4 @@ class SocketManager:
         return len(self._connected_clients)
 
 
-# Singleton instance
 socket_manager = SocketManager()

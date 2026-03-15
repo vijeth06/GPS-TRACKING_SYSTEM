@@ -130,7 +130,6 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
   }
 
   useEffect(() => {
-    // Background refresh — don't disable buttons unnecessarily
     refreshAll(false)
   }, [selectedDevice?.device_id])
 

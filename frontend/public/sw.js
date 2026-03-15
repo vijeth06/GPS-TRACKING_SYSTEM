@@ -7,5 +7,4 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', () => {
-  // Network-first behavior keeps live telemetry fresh.
 })

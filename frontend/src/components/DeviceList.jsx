@@ -1,13 +1,7 @@
-/**
- * DeviceList Component
- * 
- * Displays a list of tracked devices with their status.
- */
 
 import React from 'react'
 import { Truck, Circle } from 'lucide-react'
 
-// Connectivity colors and labels
 const CONNECTIVITY_CONFIG = {
   online:  { color: 'bg-green-500', label: 'Online' },
   delayed: { color: 'bg-amber-500',  label: 'Delayed' },

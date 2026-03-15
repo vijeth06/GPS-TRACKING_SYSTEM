@@ -1,13 +1,3 @@
-/**
- * MapView Component
- * 
- * Interactive map showing:
- * - Device markers with status colors
- * - Device trails (polylines)
- * - Geofence boundaries
- * 
- * Uses Leaflet.js with OpenStreetMap tiles.
- */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, useMap, CircleMarker, Tooltip } from 'react-leaflet'
@@ -16,13 +6,9 @@ import TrailLayer from './TrailLayer'
 import GeofenceLayer from './GeofenceLayer'
 import { getDeviceTrail } from '../services/api'
 
-// Default map center (Coimbatore, India)
 const DEFAULT_CENTER = [11.0168, 76.9558]
 const DEFAULT_ZOOM = 12
 
-/**
- * Component to handle map centering on selected device
- */
 function MapController({ selectedDevice, devices }) {
   const map = useMap()
   const hasInitialFit = useRef(false)
@@ -47,7 +33,6 @@ function MapController({ selectedDevice, devices }) {
         }
 
         if (!hasInitialFit.current && devices.length > 0) {
-          // Fit bounds only once on initial load to show all devices
           const validDevices = devices.filter(
             (d) => Number.isFinite(d.latest_location?.latitude) && Number.isFinite(d.latest_location?.longitude)
           )
@@ -78,10 +63,9 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
   const [trail, setTrail] = useState(null)
   const [loadingTrail, setLoadingTrail] = useState(false)
 
-  // Load trail when device is selected
   useEffect(() => {
     const loadTrail = async () => {
-      if (!selectedDevice) {
+      if (!selectedDevice?.device_id) {
         setTrail(null)
         return
       }
@@ -105,9 +89,8 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
     }
 
     loadTrail()
-  }, [selectedDevice])
+  }, [selectedDevice?.device_id])
 
-  // Calculate initial center
   const getInitialCenter = useCallback(() => {
     const validDevices = devices.filter(
       (d) => d.latest_location?.latitude && d.latest_location?.longitude

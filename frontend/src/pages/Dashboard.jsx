@@ -1,21 +1,3 @@
-/**
- * Dashboard Page
- * 
- * Main dashboard showing:
- * - Interactive map with live device positions
- * - Analytics panel
- * - Alerts feed
- * - Device list
- * 
- * Layout:
- * +----------------------------------+
- * |         Header / Stats          |
- * +----------------------------------+
- * |                    |   Analytics |
- * |      Map View      |   Panel     |
- * |                    |   & Alerts  |
- * +----------------------------------+
- */
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { 
@@ -36,7 +18,6 @@ import { useAuth } from '../context/AuthContext'
 
 function Dashboard() {
   const { user, logout } = useAuth()
-  // State
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [alerts, setAlerts] = useState([])
@@ -70,10 +51,14 @@ function Dashboard() {
       setGeofences(geofencesData)
       setSystemStats(statsData)
 
-      const targetId = focusDeviceId || selectedDevice?.device_id
-      if (targetId) {
-        const refreshedSelected = devicesData.find((device) => device.device_id === targetId) || null
+      if (focusDeviceId) {
+        const refreshedSelected = devicesData.find((device) => device.device_id === focusDeviceId) || null
         setSelectedDevice(refreshedSelected)
+      } else if (selectedDevice?.device_id) {
+        const stillExists = devicesData.some((device) => device.device_id === selectedDevice.device_id)
+        if (!stillExists) {
+          setSelectedDevice(null)
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -82,22 +67,18 @@ function Dashboard() {
     }
   }, [selectedDevice?.device_id])
 
-  // Initial data fetch
   useEffect(() => {
     fetchData()
-    // Refresh data periodically
-    const interval = setInterval(fetchData, 30000)
+    const interval = setInterval(() => fetchData(false), 30000)
     return () => clearInterval(interval)
   }, [fetchData])
 
-  // WebSocket connection
   useEffect(() => {
     const connectSocket = async () => {
       try {
         await socketService.connect()
         setIsConnected(true)
 
-        // Track live disconnect / reconnect events
         socketService.socket?.on('disconnect', () => setIsConnected(false))
         socketService.socket?.on('connect',    () => setIsConnected(true))
       } catch (error) {
@@ -114,11 +95,9 @@ function Dashboard() {
     }
   }, [])
 
-  // Listen for real-time updates
   useEffect(() => {
     if (!isConnected) return
 
-    // Location updates
     const unsubLocation = socketService.onLocationUpdate((data) => {
       setDevices((prevDevices) => {
         return prevDevices.map((device) => {
@@ -143,7 +122,6 @@ function Dashboard() {
       })
     })
 
-    // Alert updates
     const unsubAlert = socketService.onAlertUpdate((data) => {
       setAlerts((prevAlerts) => [data, ...prevAlerts.slice(0, 49)])
       setSystemStats((prev) => ({
@@ -159,12 +137,10 @@ function Dashboard() {
     }
   }, [isConnected])
 
-  // Select device handler
   const handleDeviceSelect = useCallback((device) => {
     setSelectedDevice(device)
   }, [])
 
-  // Acknowledge alert handler
   const handleAlertChanged = useCallback((updatedAlert) => {
     if (!updatedAlert?.id) return
 
@@ -173,7 +149,6 @@ function Dashboard() {
       const wasUnacked = prev && !prev.is_acknowledged
       const nowAcked = updatedAlert.is_acknowledged
 
-      // Only decrement counter when transitioning from un-acked → acked
       if (wasUnacked && nowAcked) {
         setSystemStats((s) => ({
           ...s,
@@ -564,7 +539,6 @@ function WorkspaceTabButton({ active, onClick, icon, label }) {
   )
 }
 
-// Stat Card Component
 function StatCard({ icon, label, value, color }) {
   const colorClasses = {
     blue: 'bg-sky-50 text-sky-700',

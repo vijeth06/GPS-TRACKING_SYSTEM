@@ -42,7 +42,6 @@ async def get_device_analytics(
     Returns:
         Device analytics data
     """
-    # Default to last 24 hours
     if not end_time:
         end_time = datetime.utcnow()
     if not start_time:
@@ -98,7 +97,6 @@ async def get_speed_over_time(
     Returns:
         Speed data points for charting
     """
-    # Default to last 6 hours
     if not end_time:
         end_time = datetime.utcnow()
     if not start_time:
@@ -135,7 +133,6 @@ async def get_heatmap_data(
     Returns:
         Heatmap data with location counts
     """
-    # Default to last 24 hours
     if not end_time:
         end_time = datetime.utcnow()
     if not start_time:

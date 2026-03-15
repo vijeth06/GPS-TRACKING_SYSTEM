@@ -26,20 +26,14 @@ from typing import List, Tuple
 import json
 
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
 
-# Backend API URL
 API_URL = "http://localhost:8000/api/gps"
 
-# Simulation settings
 NUM_DEVICES = 7
 UPDATE_INTERVAL = 2  # seconds
 CENTER_LAT = 11.0168  # Coimbatore, India
 CENTER_LNG = 76.9558
 
-# Movement settings
 MIN_SPEED = 0  # km/h
 MAX_SPEED = 80  # km/h
 TURN_PROBABILITY = 0.15
@@ -47,9 +41,6 @@ STOP_PROBABILITY = 0.05
 RESUME_PROBABILITY = 0.3
 
 
-# =============================================================================
-# DATA CLASSES
-# =============================================================================
 
 @dataclass
 class SimulatedDevice:
@@ -75,9 +66,6 @@ class SimulatedDevice:
         }
 
 
-# =============================================================================
-# MOVEMENT SIMULATION
-# =============================================================================
 
 def calculate_new_position(
     lat: float, lng: float,
@@ -98,21 +86,16 @@ def calculate_new_position(
     Returns:
         New (latitude, longitude) tuple
     """
-    # Convert speed to km/s and calculate distance
     distance_km = (speed_kmh / 3600) * time_seconds
     
-    # Earth's radius in km
     R = 6371.0
     
-    # Convert to radians
     lat_rad = math.radians(lat)
     lng_rad = math.radians(lng)
     heading_rad = math.radians(heading)
     
-    # Angular distance
     angular_dist = distance_km / R
     
-    # Calculate new position using spherical trigonometry
     new_lat_rad = math.asin(
         math.sin(lat_rad) * math.cos(angular_dist) +
         math.cos(lat_rad) * math.sin(angular_dist) * math.cos(heading_rad)
@@ -135,7 +118,6 @@ def update_device_state(device: SimulatedDevice) -> None:
     - Speed variations
     - Direction changes (turns)
     """
-    # Check if device should stop
     if device.is_stopped:
         device.stop_duration -= 1
         if device.stop_duration <= 0 or random.random() < RESUME_PROBABILITY:
@@ -150,19 +132,15 @@ def update_device_state(device: SimulatedDevice) -> None:
         device.speed = 0
         return
     
-    # Update speed with some randomness
     speed_change = random.uniform(-5, 5)
     device.speed = max(MIN_SPEED, min(MAX_SPEED, device.speed + speed_change))
     
-    # Random direction changes (turns)
     if random.random() < TURN_PROBABILITY:
         turn_angle = random.uniform(-45, 45)
         device.heading = (device.heading + turn_angle) % 360
     else:
-        # Small heading adjustments for realism
         device.heading = (device.heading + random.uniform(-5, 5)) % 360
     
-    # Calculate new position
     new_lat, new_lng = calculate_new_position(
         device.latitude, device.longitude,
         device.speed, device.heading,
@@ -187,7 +165,6 @@ def create_devices() -> List[SimulatedDevice]:
     
     devices = []
     for i in range(NUM_DEVICES):
-        # Random starting position around center
         lat_offset = random.uniform(-0.05, 0.05)
         lng_offset = random.uniform(-0.05, 0.05)
         
@@ -204,9 +181,6 @@ def create_devices() -> List[SimulatedDevice]:
     return devices
 
 
-# =============================================================================
-# API COMMUNICATION
-# =============================================================================
 
 async def send_gps_data(session: aiohttp.ClientSession, device: SimulatedDevice) -> bool:
     """
@@ -225,7 +199,6 @@ async def send_gps_data(session: aiohttp.ClientSession, device: SimulatedDevice)
         async with session.post(API_URL, json=payload) as response:
             if response.status == 200:
                 result = await response.json()
-                # Print alerts if any
                 alerts = result.get('alerts', [])
                 if alerts:
                     for alert in alerts:
@@ -255,16 +228,13 @@ async def run_simulation():
     print("\nPress Ctrl+C to stop\n")
     print("-" * 60)
     
-    # Create initial devices
     devices = create_devices()
     
-    # Print initial device info
     print("\n📱 Simulated Devices:")
     for device in devices:
         print(f"   • {device.device_id}: {device.device_name}")
     print()
     
-    # Create HTTP session
     async with aiohttp.ClientSession() as session:
         update_count = 0
         
@@ -273,31 +243,22 @@ async def run_simulation():
             timestamp = datetime.now().strftime("%H:%M:%S")
             print(f"\n[{timestamp}] Update #{update_count}")
             
-            # Update and send data for each device
             tasks = []
             for device in devices:
-                # Update device state
                 update_device_state(device)
                 
-                # Status indicator
                 status = "🛑 STOPPED" if device.is_stopped else f"🚗 {device.speed:.1f} km/h"
                 print(f"   {device.device_id}: ({device.latitude:.4f}, {device.longitude:.4f}) {status}")
                 
-                # Send to API
                 tasks.append(send_gps_data(session, device))
             
-            # Wait for all sends to complete
             results = await asyncio.gather(*tasks, return_exceptions=True)
             success_count = sum(1 for r in results if r is True)
             print(f"   ✓ Sent {success_count}/{len(devices)} updates")
             
-            # Wait for next interval
             await asyncio.sleep(UPDATE_INTERVAL)
 
 
-# =============================================================================
-# ENTRY POINT
-# =============================================================================
 
 def main():
     """Entry point for the GPS simulator."""

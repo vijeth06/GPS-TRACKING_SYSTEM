@@ -1,11 +1,3 @@
-/**
- * AnalyticsDashboard Component
- * 
- * Displays analytics data including:
- * - Speed over time chart
- * - Device statistics
- * - Movement summary
- */
 
 import React, { useState, useEffect } from 'react'
 import {
@@ -23,7 +15,6 @@ import { Line } from 'react-chartjs-2'
 import { Route, Timer, Gauge, TrendingUp } from 'lucide-react'
 import { getDeviceAnalytics, getSpeedOverTime } from '../services/api'
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -41,7 +32,6 @@ function AnalyticsDashboard({ selectedDevice, systemStats }) {
   const [loading, setLoading] = useState(false)
   const selectedDeviceId = selectedDevice?.device_id || ''
 
-  // Fetch analytics when device is selected
   useEffect(() => {
     let cancelled = false
 
@@ -80,7 +70,6 @@ function AnalyticsDashboard({ selectedDevice, systemStats }) {
     }
   }, [selectedDeviceId])
 
-  // Chart configuration
   const chartData = speedData?.data
     ? {
         labels: speedData.data.map((d) =>
@@ -144,7 +133,6 @@ function AnalyticsDashboard({ selectedDevice, systemStats }) {
     },
   }
 
-  // Show system stats if no device selected
   if (!selectedDevice) {
     return (
       <div className="space-y-4">
@@ -245,7 +233,6 @@ function AnalyticsDashboard({ selectedDevice, systemStats }) {
   )
 }
 
-// Helper Components
 function StatBox({ icon, label, value, color }) {
   const colorClasses = {
     blue: 'text-blue-600 bg-blue-50',
@@ -267,7 +254,6 @@ function StatBox({ icon, label, value, color }) {
   )
 }
 
-// Format duration in seconds to human readable
 function formatDuration(seconds) {
   if (seconds < 60) return `${seconds}s`
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m`

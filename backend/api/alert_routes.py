@@ -44,7 +44,6 @@ async def get_alerts(
     Returns:
         List of alerts matching the filters
     """
-    # Default to last 24 hours if no time range specified
     if not end_time:
         end_time = datetime.utcnow()
     if not start_time:

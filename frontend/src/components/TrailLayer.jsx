@@ -1,14 +1,7 @@
-/**
- * TrailLayer Component
- * 
- * Displays the movement trail for a device as a polyline.
- * Color gradient indicates speed at each point.
- */
 
 import React from 'react'
 import { Polyline, CircleMarker, Tooltip } from 'react-leaflet'
 
-// Trail colors
 const TRAIL_COLOR = '#2563eb' // Blue
 const TRAIL_START_COLOR = '#22c55e' // Green
 const TRAIL_END_COLOR = '#ef4444' // Red
@@ -33,13 +26,11 @@ function TrailLayer({ trail }) {
     return null
   }
 
-  // Keep rendering lightweight and readable for long trails.
   const stride = Math.max(1, Math.ceil(trail.points.length / MAX_RENDER_POINTS))
   const sampledPoints = trail.points.filter(
     (point, index) => index % stride === 0 || index === trail.points.length - 1
   )
 
-  // Drop invalid points and large GPS glitches that create fan-like spikes.
   const cleanPoints = []
   for (const point of sampledPoints) {
     if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) {
@@ -60,17 +51,14 @@ function TrailLayer({ trail }) {
     return null
   }
 
-  // Convert points to position array
   const positions = cleanPoints.map((point) => [point.lat, point.lng])
 
-  // Calculate trail segments with speed-based coloring
   const segments = []
   for (let i = 1; i < cleanPoints.length; i++) {
     const startPoint = cleanPoints[i - 1]
     const endPoint = cleanPoints[i]
     const speed = endPoint.speed || 0
     
-    // Color based on speed
     let color
     if (speed < 5) {
       color = '#6b7280' // Gray - stationary
@@ -92,7 +80,6 @@ function TrailLayer({ trail }) {
     })
   }
 
-  // Start and end points
   const startPoint = cleanPoints[0]
   const endPoint = cleanPoints[cleanPoints.length - 1]
 

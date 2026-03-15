@@ -223,13 +223,11 @@ class DeviceService:
         if not device:
             return None
         
-        # Get latest location
         latest_location = await self.db.gps_locations.find_one(
             {"device_id": device_id},
             sort=[("timestamp", -1)]
         )
         
-        # Calculate basic analytics
         total_distance, avg_speed = await self._calculate_device_stats(device_id)
         
         location_response = None
@@ -289,7 +287,6 @@ class DeviceService:
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(hours=24)
         
-        # Aggregation pipeline for average speed
         pipeline = [
             {
                 "$match": {
@@ -309,7 +306,6 @@ class DeviceService:
         result = await self.db.gps_locations.aggregate(pipeline).to_list(length=1)
         avg_speed = round(result[0]["avg_speed"], 2) if result and result[0].get("avg_speed") else 0
         
-        # Total distance is calculated separately
         total_distance = 0
         
         return total_distance, avg_speed

@@ -4,7 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles for the GPS Tracking Dashboard */
 
 :root {
   --bg-0: #f2f6f9;
@@ -61,7 +60,6 @@ h1, h2, h3 {
   @apply text-base font-bold text-slate-800;
 }
 
-/* Leaflet custom marker styles */
 .custom-marker {
   @apply rounded-full border-2 border-white shadow-lg;
 }
@@ -82,7 +80,6 @@ h1, h2, h3 {
   @apply bg-blue-500;
 }
 
-/* Alert animations */
 .alert-enter {
   @apply opacity-0 transform translate-x-full;
 }
@@ -91,7 +88,6 @@ h1, h2, h3 {
   @apply opacity-100 transform translate-x-0 transition-all duration-300;
 }
 
-/* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   @apply w-2;
 }
@@ -104,12 +100,10 @@ h1, h2, h3 {
   @apply bg-gray-400 rounded hover:bg-gray-500;
 }
 
-/* Map container */
 .map-container {
   @apply w-full h-full rounded-lg overflow-hidden shadow-lg;
 }
 
-/* Status badge styles */
 .status-badge {
   @apply px-2 py-1 rounded-full text-xs font-semibold;
 }
@@ -130,7 +124,6 @@ h1, h2, h3 {
   @apply bg-blue-100 text-blue-800;
 }
 
-/* Pulse animation for live indicator */
 .pulse-live {
   @apply relative;
 }
@@ -145,12 +138,10 @@ h1, h2, h3 {
   @apply absolute w-3 h-3 bg-green-500 rounded-full;
 }
 
-/* Card hover effects */
 .card-hover {
   @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
 }
 
-/* Connection status pulse dot in Dashboard header */
 @keyframes pulse-anim {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.5; transform: scale(1.4); }
@@ -159,16 +150,13 @@ h1, h2, h3 {
   animation: pulse-anim 1.5s ease-in-out infinite;
 }
 
-/* ===== Device marker connectivity ring animations ===== */
 
-/* Online: expanding pulse ring */
 @keyframes ring-pulse {
   0%   { transform: scale(1);   opacity: 0.9; }
   60%  { transform: scale(1.65); opacity: 0.25; }
   100% { transform: scale(1.9); opacity: 0; }
 }
 
-/* Delayed: slow amber throb */
 @keyframes ring-throb {
   0%, 100% { transform: scale(1);    opacity: 0.85; }
   50%       { transform: scale(1.35); opacity: 0.35; }
@@ -203,7 +191,6 @@ h1, h2, h3 {
   }
 }
 
-/* Geofence polygon styles */
 .geofence-restricted {
   stroke: #ef4444;
   fill: rgba(239, 68, 68, 0.2);

@@ -113,7 +113,6 @@ class GeoserverService:
                 if text:
                     names.add(text)
 
-            # Fallback for non-standard capabilities variants.
             if not names:
                 for element in root.findall(".//{*}Name"):
                     text = (element.text or "").strip()

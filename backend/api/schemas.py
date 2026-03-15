@@ -9,9 +9,6 @@ from typing import Optional, List
 from datetime import datetime
 
 
-# =============================================================================
-# AUTH SCHEMAS
-# =============================================================================
 
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
@@ -32,9 +29,6 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
-# =============================================================================
-# GPS DATA SCHEMAS
-# =============================================================================
 
 class GPSDataInput(BaseModel):
     """Schema for incoming GPS data from devices/simulator"""
@@ -77,9 +71,6 @@ class GPSDataResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# =============================================================================
-# DEVICE SCHEMAS
-# =============================================================================
 
 class DeviceCreate(BaseModel):
     """Schema for creating a new device"""
@@ -154,9 +145,6 @@ class DeviceCredentialStatusResponse(BaseModel):
     rotated_at: Optional[datetime] = None
 
 
-# =============================================================================
-# TRAIL SCHEMAS
-# =============================================================================
 
 class TrailPoint(BaseModel):
     """Single point in a device trail"""
@@ -175,9 +163,6 @@ class DeviceTrailResponse(BaseModel):
     end_time: Optional[datetime]
 
 
-# =============================================================================
-# GEOFENCE SCHEMAS
-# =============================================================================
 
 class CoordinatePoint(BaseModel):
     """A single coordinate point"""
@@ -206,9 +191,6 @@ class GeofenceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# =============================================================================
-# ALERT SCHEMAS
-# =============================================================================
 
 class AlertResponse(BaseModel):
     """Schema for alert response"""
@@ -257,9 +239,6 @@ class AlertEscalate(BaseModel):
     escalation_note: Optional[str] = Field(None, max_length=256)
 
 
-# =============================================================================
-# ANALYTICS SCHEMAS
-# =============================================================================
 
 class DeviceAnalytics(BaseModel):
     """Analytics for a single device"""
@@ -295,9 +274,6 @@ class SpeedOverTime(BaseModel):
     data: List[SpeedDataPoint]
 
 
-# =============================================================================
-# WEBSOCKET SCHEMAS
-# =============================================================================
 
 class LocationUpdate(BaseModel):
     """Real-time location update for WebSocket"""
@@ -319,9 +295,6 @@ class AlertUpdate(BaseModel):
     timestamp: datetime
 
 
-# =============================================================================
-# INGESTION / OPS / GEOSERVER SCHEMAS
-# =============================================================================
 
 class RawGPSPacket(BaseModel):
     """Raw packet for external port/stream ingestion."""
@@ -415,9 +388,6 @@ class DemoScenarioResult(BaseModel):
     details: str
 
 
-# =============================================================================
-# NOTIFICATIONS / RULES / ROUTES / ADMIN / REPORTING / GOVERNANCE / INTELLIGENCE
-# =============================================================================
 
 class NotificationChannelConfig(BaseModel):
     channel_type: str = Field(..., min_length=2, max_length=32)

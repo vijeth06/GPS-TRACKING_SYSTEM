@@ -72,7 +72,6 @@ def create_alert_document(
         "created_at": now
     }
     
-    # Add location as GeoJSON if coordinates provided
     if latitude is not None and longitude is not None:
         doc["location"] = {
             "type": "Point",

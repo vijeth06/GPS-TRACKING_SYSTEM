@@ -33,7 +33,6 @@ class GeofenceService:
         
         Converts coordinate list to GeoJSON polygon.
         """
-        # Convert coordinates to dict format
         coords = [{"lat": c.lat, "lng": c.lng} for c in geofence_data.coordinates]
         
         doc = create_geofence_document(
@@ -116,13 +115,11 @@ class GeofenceService:
         Returns:
             List of geofences that contain the point
         """
-        # Create GeoJSON point
         point = {
             "type": "Point",
             "coordinates": [longitude, latitude]
         }
         
-        # Query for geofences containing the point
         cursor = self.db.geofences.find({
             "is_active": True,
             "geometry": {

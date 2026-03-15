@@ -1,15 +1,3 @@
-/**
- * GPS Tracking System - Main Application
- * 
- * Real-Time GPS Tracking and Movement Intelligence System
- * 
- * Architecture:
- *   React Dashboard
- *        ↑
- *   WebSocket (Socket.IO)
- *        ↑
- *   FastAPI Backend
- */
 
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'

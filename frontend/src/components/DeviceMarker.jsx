@@ -1,24 +1,14 @@
-/**
- * DeviceMarker Component
- * 
- * Displays a device marker on the map with:
- * - Color based on movement status
- * - Popup with device details
- * - Click handling for selection
- */
 
 import React, { useMemo } from 'react'
 import { Marker, Popup, CircleMarker } from 'react-leaflet'
 import L from 'leaflet'
 
-// Connectivity colors — used for the marker ring/border
 const CONNECTIVITY_BORDER_COLORS = {
   online: '#22c55e',   // green-500
   delayed: '#f59e0b',  // amber-500
   offline: '#9ca3af',  // gray-400
 }
 
-// Movement colors — used for the marker fill
 const MOVEMENT_FILL_COLORS = {
   stationary: '#64748b', // slate-500
   slow: '#f59e0b',       // amber-500
@@ -27,34 +17,24 @@ const MOVEMENT_FILL_COLORS = {
   unknown: '#94a3b8',    // slate-400
 }
 
-// Glow shadow per connectivity status — appears as a coloured aura outside the ring
 const CONNECTIVITY_GLOW = {
   online:  '0 0 0 3px #22c55e, 0 0 12px 4px rgba(34,197,94,0.55)',
   delayed: '0 0 0 3px #f59e0b, 0 0 12px 4px rgba(245,158,11,0.50)',
   offline: '0 0 0 3px #9ca3af, 0 0  6px 2px rgba(156,163,175,0.35)',
 }
 
-// Animated outer ring class per connectivity status
 const CONNECTIVITY_RING_CLASS = {
   online:  'marker-ring-pulse',
   delayed: 'marker-ring-throb',
   offline: '',
 }
 
-// Status dot colour shown at bottom-right for quick scan
 const CONNECTIVITY_DOT_COLOR = {
   online:  '#16a34a',
   delayed: '#d97706',
   offline: '#6b7280',
 }
 
-/**
- * Create custom icon for device marker.
- * Fill colour              = movement status.
- * Outer ring + glow shadow = connectivity status.
- * Animated outer halo      = online (pulse) / delayed (throb).
- * Status dot (bottom-right) = second connectivity indicator.
- */
 function createDeviceIcon(connectivityStatus, movementStatus, isSelected) {
   const borderColor = CONNECTIVITY_BORDER_COLORS[connectivityStatus] || CONNECTIVITY_BORDER_COLORS.offline
   const fillColor   = MOVEMENT_FILL_COLORS[movementStatus]           || MOVEMENT_FILL_COLORS.unknown
@@ -65,7 +45,6 @@ function createDeviceIcon(connectivityStatus, movementStatus, isSelected) {
   const size        = isSelected ? 42 : 34
   const dotSize     = isSelected ? 11 : 9
   const iconSvg     = size * 0.48
-  // Outer wrapper is larger to give the animated ring room
   const wrapSize    = size + 14
 
   return L.divIcon({
@@ -121,26 +100,17 @@ function createDeviceIcon(connectivityStatus, movementStatus, isSelected) {
   })
 }
 
-/**
- * Format speed for display
- */
 function formatSpeed(speed) {
   if (speed === null || speed === undefined) return 'N/A'
   return `${speed.toFixed(1)} km/h`
 }
 
-/**
- * Format timestamp for display
- */
 function formatTime(timestamp) {
   if (!timestamp) return 'N/A'
   const date = new Date(timestamp)
   return date.toLocaleTimeString()
 }
 
-/**
- * Get status display text
- */
 function getConnectivityText(status) {
   const statusMap = {
     online: 'Online',
@@ -163,7 +133,6 @@ function getMovementText(status) {
 function DeviceMarker({ device, isSelected, onClick }) {
   const { latest_location } = device
   
-  // Skip if no location
   if (!latest_location?.latitude || !latest_location?.longitude) {
     return null
   }

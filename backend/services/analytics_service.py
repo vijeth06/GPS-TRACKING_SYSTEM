@@ -42,13 +42,11 @@ class AnalyticsService:
         Returns:
             Device analytics or None if device not found
         """
-        # Check device exists
         device = await self.db.devices.find_one({"device_id": device_id})
         
         if not device:
             return None
         
-        # Get locations in time range
         cursor = self.db.gps_locations.find({
             "device_id": device_id,
             "timestamp": {"$gte": start_time, "$lte": end_time}
@@ -68,18 +66,14 @@ class AnalyticsService:
                 current_status="offline"
             )
         
-        # Calculate total distance
         total_distance = self.movement_analyzer.calculate_total_distance_from_docs(locations)
         
-        # Calculate speed statistics
         speeds = [loc.get("speed") for loc in locations if loc.get("speed") is not None]
         avg_speed = sum(speeds) / len(speeds) if speeds else 0
         max_speed = max(speeds) if speeds else 0
         
-        # Calculate stationary vs moving time
         stationary_time, moving_time = self._calculate_time_breakdown(locations)
         
-        # Get current status from latest location
         latest = locations[-1] if locations else None
         current_status = self.movement_analyzer.classify_speed(
             latest.get("speed", 0) if latest else 0
@@ -98,10 +92,8 @@ class AnalyticsService:
     
     async def get_system_analytics(self) -> SystemAnalytics:
         """Get system-wide analytics."""
-        # Total devices
         total_devices = await self.db.devices.count_documents({})
         
-        # Online devices (reported in last 5 minutes)
         cutoff_time = datetime.utcnow() - timedelta(minutes=5)
         
         online_pipeline = [
@@ -112,11 +104,9 @@ class AnalyticsService:
         online_result = await self.db.gps_locations.aggregate(online_pipeline).to_list(length=1)
         devices_online = online_result[0]["count"] if online_result else 0
         
-        # Alert counts
         total_alerts = await self.db.alerts.count_documents({})
         unacknowledged_alerts = await self.db.alerts.count_documents({"is_acknowledged": False})
         
-        # Aggregate speed (last 24 hours)
         start_time = datetime.utcnow() - timedelta(hours=24)
         
         speed_pipeline = [
@@ -158,13 +148,11 @@ class AnalyticsService:
         
         Aggregates speed readings by time interval.
         """
-        # Check device exists
         device = await self.db.devices.find_one({"device_id": device_id})
         
         if not device:
             return None
         
-        # Get speed readings with timestamps
         cursor = self.db.gps_locations.find({
             "device_id": device_id,
             "timestamp": {"$gte": start_time, "$lte": end_time},
@@ -176,17 +164,14 @@ class AnalyticsService:
         if not locations:
             return SpeedOverTime(device_id=device_id, data=[])
         
-        # Aggregate by interval
         data_points = []
         current_interval_start = locations[0]["timestamp"]
         interval_speeds = []
         
         for loc in locations:
-            # Check if still in current interval
             if (loc["timestamp"] - current_interval_start).total_seconds() < interval_minutes * 60:
                 interval_speeds.append(loc["speed"])
             else:
-                # Save current interval average
                 if interval_speeds:
                     avg = sum(interval_speeds) / len(interval_speeds)
                     data_points.append(SpeedDataPoint(
@@ -194,11 +179,9 @@ class AnalyticsService:
                         speed=round(avg, 2)
                     ))
                 
-                # Start new interval
                 current_interval_start = loc["timestamp"]
                 interval_speeds = [loc["speed"]]
         
-        # Don't forget last interval
         if interval_speeds:
             avg = sum(interval_speeds) / len(interval_speeds)
             data_points.append(SpeedDataPoint(
@@ -219,7 +202,6 @@ class AnalyticsService:
         
         Aggregates locations into grid cells and counts occurrences.
         """
-        # Use MongoDB aggregation with rounding for grid-based aggregation
         pipeline = [
             {
                 "$match": {
@@ -292,7 +274,6 @@ class AnalyticsService:
         
         Aggregates speed readings by time interval.
         """
-        # Check device exists
         device = self.db.query(Device)\
             .filter(Device.device_id == device_id)\
             .first()
@@ -300,7 +281,6 @@ class AnalyticsService:
         if not device:
             return None
         
-        # Get speed readings with timestamps
         locations = self.db.query(GPSLocation.timestamp, GPSLocation.speed)\
             .filter(GPSLocation.device_id == device_id)\
             .filter(GPSLocation.timestamp >= start_time)\
@@ -312,17 +292,14 @@ class AnalyticsService:
         if not locations:
             return SpeedOverTime(device_id=device_id, data=[])
         
-        # Aggregate by interval
         data_points = []
         current_interval_start = locations[0].timestamp
         interval_speeds = []
         
         for loc in locations:
-            # Check if still in current interval
             if (loc.timestamp - current_interval_start).total_seconds() < interval_minutes * 60:
                 interval_speeds.append(loc.speed)
             else:
-                # Save current interval average
                 if interval_speeds:
                     avg = sum(interval_speeds) / len(interval_speeds)
                     data_points.append(SpeedDataPoint(
@@ -330,11 +307,9 @@ class AnalyticsService:
                         speed=round(avg, 2)
                     ))
                 
-                # Start new interval
                 current_interval_start = loc.timestamp
                 interval_speeds = [loc.speed]
         
-        # Don't forget last interval
         if interval_speeds:
             avg = sum(interval_speeds) / len(interval_speeds)
             data_points.append(SpeedDataPoint(
@@ -355,7 +330,6 @@ class AnalyticsService:
         
         Aggregates locations into grid cells and counts occurrences.
         """
-        # MongoDB aggregation to group by rounded coordinates
         pipeline = [
             {
                 "$match": {
@@ -414,7 +388,6 @@ class AnalyticsService:
             
             time_diff = (curr["timestamp"] - prev["timestamp"]).total_seconds()
             
-            # Use speed to determine if stationary or moving
             avg_speed = 0
             prev_speed = prev.get("speed")
             curr_speed = curr.get("speed")

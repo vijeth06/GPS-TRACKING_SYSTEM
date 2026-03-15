@@ -24,16 +24,13 @@ from typing import Optional, Dict, List, Any
 from backend.database.connection import get_database
 
 
-# Earth's radius in kilometers
 EARTH_RADIUS_KM = 6371.0
 
-# Speed thresholds (km/h)
 SPEED_STATIONARY = 5
 SPEED_SLOW = 20
 SPEED_NORMAL = 60
 SPEED_VIOLATION = 120  # Above this triggers alert
 
-# Stationary detection settings
 STATIONARY_DISTANCE_THRESHOLD = 0.01  # km (10 meters)
 STATIONARY_TIME_THRESHOLD = 300  # seconds (5 minutes)
 
@@ -52,7 +49,6 @@ class MovementAnalyzer:
     
     def __init__(self):
         self.db = get_database()
-        # Cache for tracking stationary status
         self._stationary_cache: Dict[str, Dict[str, Any]] = {}
     
     @staticmethod
@@ -73,13 +69,11 @@ class MovementAnalyzer:
         Returns:
             Distance in kilometers
         """
-        # Convert to radians
         lat1_rad = math.radians(lat1)
         lat2_rad = math.radians(lat2)
         delta_lat = math.radians(lat2 - lat1)
         delta_lon = math.radians(lon2 - lon1)
         
-        # Haversine formula
         a = (math.sin(delta_lat / 2) ** 2 +
              math.cos(lat1_rad) * math.cos(lat2_rad) *
              math.sin(delta_lon / 2) ** 2)
@@ -104,10 +98,8 @@ class MovementAnalyzer:
         Returns:
             Speed in km/h
         """
-        # Calculate distance
         distance_km = self.haversine_distance(lat1, lon1, lat2, lon2)
         
-        # Calculate time difference in hours
         time_diff = (time2 - time1).total_seconds() / 3600.0
         
         if time_diff <= 0:
@@ -164,7 +156,6 @@ class MovementAnalyzer:
         Returns:
             Alert data if stationary too long, None otherwise
         """
-        # Get device's recent location history
         start_time = timestamp - timedelta(seconds=STATIONARY_TIME_THRESHOLD)
         
         cursor = self.db.gps_locations.find({
@@ -177,7 +168,6 @@ class MovementAnalyzer:
         if len(recent_locations) < 2:
             return None
         
-        # Check if all recent points are within threshold distance
         first_loc = recent_locations[0]
         all_stationary = True
         max_distance = 0
@@ -193,7 +183,6 @@ class MovementAnalyzer:
                 all_stationary = False
                 break
         
-        # Also check current position
         current_distance = self.haversine_distance(
             first_loc["latitude"], first_loc["longitude"],
             latitude, longitude
@@ -204,17 +193,14 @@ class MovementAnalyzer:
             all_stationary = False
         
         if all_stationary:
-            # Check if we already generated an alert recently
             cache_key = device_id
             cached = self._stationary_cache.get(cache_key)
             
             if cached:
-                # Only alert once per stationary period
                 last_alert_time = cached.get('last_alert')
                 if last_alert_time and (timestamp - last_alert_time).total_seconds() < 600:
                     return None
             
-            # Generate alert
             stationary_duration = (timestamp - recent_locations[0]["timestamp"]).total_seconds()
             
             self._stationary_cache[cache_key] = {
@@ -231,7 +217,6 @@ class MovementAnalyzer:
                 "longitude": longitude
             }
         else:
-            # Clear stationary cache if device is moving
             if device_id in self._stationary_cache:
                 del self._stationary_cache[device_id]
         

@@ -38,8 +38,6 @@ def create_gps_location_document(
     """
     return {
         "device_id": device_id,
-        # GeoJSON format for MongoDB geospatial queries
-        # Note: GeoJSON uses [longitude, latitude] order
         "location": {
             "type": "Point",
             "coordinates": [longitude, latitude]

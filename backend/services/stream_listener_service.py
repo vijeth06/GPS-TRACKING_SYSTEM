@@ -92,7 +92,6 @@ class StreamListenerService:
                 self._dataset_profile,
             )
         if not payload:
-            # Try NMEA before rejecting
             payload = self._parse_nmea(message, self._default_device_id)
         if not payload:
             self.rejected_count += 1
@@ -165,7 +164,6 @@ class StreamListenerService:
             return datetime.utcnow().isoformat()
 
         if isinstance(value, (int, float)):
-            # Heuristic: epoch millis if value is large
             epoch = float(value)
             if epoch > 1e12:
                 epoch = epoch / 1000.0
@@ -175,13 +173,11 @@ class StreamListenerService:
             raw = value.strip()
             if not raw:
                 return datetime.utcnow().isoformat()
-            # Numeric epoch in string
             if re.fullmatch(r"\d+(\.\d+)?", raw):
                 num = float(raw)
                 if num > 1e12:
                     num = num / 1000.0
                 return datetime.utcfromtimestamp(num).isoformat()
-            # Assume ISO-like datetime string
             return raw
 
         return datetime.utcnow().isoformat()
@@ -194,7 +190,6 @@ class StreamListenerService:
         if lat is not None and lon is not None:
             return float(lat), float(lon)
 
-        # Nested location objects
         location = payload.get("location") if isinstance(payload.get("location"), dict) else None
         if location:
             lat = cls._pick(location, "latitude", "lat")
@@ -202,12 +197,10 @@ class StreamListenerService:
             if lat is not None and lon is not None:
                 return float(lat), float(lon)
 
-        # GeoJSON style coordinates: [lon, lat]
         coords = payload.get("coordinates") or payload.get("coords")
         if isinstance(coords, list) and len(coords) >= 2:
             a = float(coords[0])
             b = float(coords[1])
-            # Prefer geojson ordering if possible
             if abs(a) <= 180 and abs(b) <= 90:
                 return b, a
             if abs(a) <= 90 and abs(b) <= 180:
@@ -244,7 +237,6 @@ class StreamListenerService:
             }
 
         if profile == "vendor_x":
-            # Example vendor profile with fixed aliases often seen in legacy feeds.
             device = cls._pick(payload, "devId", "deviceId", "imei", "tracker")
             lat = cls._pick(payload, "gpsLat", "lat", "latitude")
             lon = cls._pick(payload, "gpsLon", "lng", "lon", "longitude")
@@ -274,7 +266,6 @@ class StreamListenerService:
 
         obj = payload
 
-        # Unwrap common wrappers: {"data": {...}} / {"payload": {...}} / {"gps": {...}}
         for key in ("data", "payload", "gps", "position"):
             wrapped = obj.get(key)
             if isinstance(wrapped, dict):
@@ -301,7 +292,6 @@ class StreamListenerService:
         if lat is None or lon is None:
             return None
 
-        # Speed normalization to km/h
         speed = cls._pick(obj, "speed", "speed_kmh", "velocity")
         if speed is None:
             speed_mph = cls._pick(obj, "speed_mph", "mph")
@@ -350,10 +340,8 @@ class StreamListenerService:
           "TRK101,$GPRMC,..." or "$GPRMC,..." (uses STREAM_DEFAULT_DEVICE_ID)
         """
         raw = raw.strip()
-        # Strip NMEA checksum (*XX at end)
         raw = re.sub(r'\*[0-9A-Fa-f]{2}$', '', raw)
 
-        # Try to extract prepended device id: "DEVICE_ID,$GP..."
         device_id = default_device_id
         match = re.match(r'^([^$,]+),(\$.+)$', raw)
         if match:
@@ -368,7 +356,6 @@ class StreamListenerService:
 
         try:
             if sentence_type in ('$GPRMC', '$GNRMC'):
-                # $GPRMC,hhmmss.ss,A,lat,N/S,lon,E/W,speed_knots,heading,ddmmyy,...
                 if len(parts) < 9:
                     return None
                 if parts[2] != 'A':  # 'V' = void/invalid fix
@@ -377,7 +364,6 @@ class StreamListenerService:
                 lon = cls._nmea_lat_lon(parts[5], parts[6])
                 speed_kmh = float(parts[7]) * 1.852 if parts[7] else None
                 heading = float(parts[8]) if parts[8] else None
-                # Build timestamp from date+time fields
                 time_str = parts[1]   # hhmmss.ss
                 date_str = parts[9] if len(parts) > 9 and parts[9] else None
                 if date_str:
@@ -395,7 +381,6 @@ class StreamListenerService:
                 }
 
             elif sentence_type in ('$GPGGA', '$GNGGA'):
-                # $GPGGA,hhmmss.ss,lat,N/S,lon,E/W,fix,sats,hdop,alt,M,...
                 if len(parts) < 10:
                     return None
                 if parts[6] == '0':  # fix quality 0 = no fix

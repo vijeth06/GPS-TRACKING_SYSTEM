@@ -71,13 +71,10 @@ class GPSService:
         """
         alerts_generated = []
         
-        # 1. Ensure device exists
         device = await self.device_service.get_or_create_device(gps_data.device_id)
         
-        # 2. Get previous location for speed calculation
         previous_location = await self._get_latest_location(gps_data.device_id)
         
-        # 3. Calculate speed if not provided and we have previous location
         speed = gps_data.speed
         if speed is None and previous_location:
             speed = self.movement_analyzer.calculate_speed(
@@ -87,18 +84,14 @@ class GPSService:
                 gps_data.timestamp
             )
         
-        # 4. Store the GPS location
         location_id = await self._store_location(gps_data, speed)
         
-        # 5. Determine movement status
         status = self.movement_analyzer.classify_speed(speed or 0)
 
-        # 5b. Quality score and trip state
         quality_score = self.intelligence.compute_quality_score(gps_data.accuracy, speed)
         trip_state = await self.intelligence.update_trip_state(gps_data.device_id, gps_data.timestamp, speed)
         anomaly = await self.intelligence.compute_speed_anomaly(gps_data.device_id, speed, gps_data.timestamp)
         
-        # 6. Check for stationary alert
         stationary_alert = await self.movement_analyzer.check_stationary(
             gps_data.device_id, gps_data.latitude, gps_data.longitude, gps_data.timestamp
         )
@@ -114,7 +107,6 @@ class GPSService:
             )
             alerts_generated.append(alert)
         
-        # 7. Check for speed alert
         speed_alert = self.movement_analyzer.check_speed_violation(
             gps_data.device_id, speed or 0, gps_data.latitude, gps_data.longitude
         )
@@ -130,7 +122,6 @@ class GPSService:
             )
             alerts_generated.append(alert)
         
-        # 8. Check geofence violations
         violations = await self.geofence_service.check_point_in_geofences(
             gps_data.latitude, gps_data.longitude
         )
@@ -147,7 +138,6 @@ class GPSService:
                 )
                 alerts_generated.append(alert)
 
-        # 8b. Route deviation detection
         route_deviation = await self.route_service.evaluate_deviation(
             device_id=gps_data.device_id,
             latitude=gps_data.latitude,
@@ -155,7 +145,6 @@ class GPSService:
             timestamp=gps_data.timestamp,
         )
 
-        # 8c. Anomaly-triggered alert for strong outliers
         if anomaly.get("anomaly_score", 0) >= 0.8 and await self.alert_rules.should_emit_alert(gps_data.device_id, "anomaly_alert", 180):
             alert = await self.alert_service.create_alert(
                 device_id=gps_data.device_id,
@@ -168,7 +157,6 @@ class GPSService:
             )
             alerts_generated.append(alert)
 
-        # 8d. Rule engine event evaluation
         rule_eval = await self.rule_engine.evaluate_event(
             "gps_point",
             {
@@ -181,7 +169,6 @@ class GPSService:
             },
         )
         
-        # 9. Broadcast real-time update
         await self._broadcast_location_update(
             gps_data.device_id,
             gps_data.latitude,
@@ -191,7 +178,6 @@ class GPSService:
             gps_data.timestamp
         )
         
-        # Broadcast any alerts
         for alert in alerts_generated:
             await socket_manager.broadcast_alert(alert)
         
@@ -264,12 +250,10 @@ class GPSService:
         
         Returns a list of points that can be drawn as a polyline on the map.
         """
-        # Check device exists
         device = await self.device_service.get_device(device_id)
         if not device:
             return None
         
-        # Query locations in time range
         cursor = self.db.gps_locations.find(
             {
                 "device_id": device_id,
@@ -288,7 +272,6 @@ class GPSService:
                 end_time=end_time
             )
         
-        # Convert to trail points
         points = [
             TrailPoint(
                 lat=loc["latitude"],
@@ -299,7 +282,6 @@ class GPSService:
             for loc in locations
         ]
         
-        # Calculate total distance
         total_distance = self.movement_analyzer.calculate_total_distance_from_docs(locations)
         
         return DeviceTrailResponse(

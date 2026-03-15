@@ -1,8 +1,3 @@
-/**
- * AlertPanel Component
- * 
- * Displays alerts feed with ability to acknowledge.
- */
 
 import React from 'react'
 import { 
@@ -17,7 +12,6 @@ import {
 } from 'lucide-react'
 import { acknowledgeAlert, assignAlert, escalateAlert, resolveAlert } from '../services/api'
 
-// Alert type configurations
 const ALERT_CONFIG = {
   stationary_alert: {
     icon: Clock,
@@ -49,7 +43,6 @@ const ALERT_CONFIG = {
   },
 }
 
-// Severity colors
 const SEVERITY_CONFIG = {
   low: 'bg-blue-100 text-blue-800',
   medium: 'bg-yellow-100 text-yellow-800',

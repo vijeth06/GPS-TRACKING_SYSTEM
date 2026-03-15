@@ -31,7 +31,6 @@ function WorkflowPanel({ role = 'viewer' }) {
   const canOperate = role === 'admin' || role === 'operator'
   const isAdmin = role === 'admin'
 
-  // track whether user is actively editing layers to avoid clobbering their input
   const layerInputDirty = React.useRef(false)
 
   const refresh = async () => {
@@ -46,7 +45,6 @@ function WorkflowPanel({ role = 'viewer' }) {
       setLayers(layersData)
       const [cfg, retention] = await Promise.all([getGeoserverConfig(), getRetentionStatus()])
       setGeoserverConfig(cfg)
-      // Only overwrite the text field if the user hasn't manually edited it
       if (!layerInputDirty.current) {
         setLayerInput((cfg.layer_names || []).join(', '))
       }

@@ -44,7 +44,6 @@ async def verify_packet_ingest_auth(
             return
 
     if not ingest_api_key and not x_device_key:
-        # Preserve existing open-ingest behavior when no auth is configured.
         return
 
     raise HTTPException(status_code=401, detail="Invalid ingest credentials for device")

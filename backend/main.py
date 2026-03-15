@@ -51,11 +51,7 @@ from backend.services.retention_service import retention_service
 from backend.services.stream_listener_service import stream_listener_service
 
 
-# =============================================================================
-# SOCKET.IO SETUP
-# =============================================================================
 
-# Create Socket.IO server with async support
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=['*'],  # Configure for production
@@ -63,11 +59,9 @@ sio = socketio.AsyncServer(
     engineio_logger=False
 )
 
-# Set socket manager's sio instance
 socket_manager.set_socketio(sio)
 
 
-# Socket.IO event handlers
 @sio.event
 async def connect(sid, environ):
     """Handle client connection."""
@@ -100,24 +94,17 @@ async def unsubscribe_device(sid, data):
         await sio.leave_room(sid, f"device_{device_id}")
 
 
-# =============================================================================
-# FASTAPI APPLICATION
-# =============================================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup/shutdown."""
-    # Startup
     print("Starting GPS Tracking System...")
     
-    # Initialize MongoDB connection
     await init_db()
     print("MongoDB connection established")
 
-    # Ensure default admin exists; do not seed mock/sample devices.
     await AuthService().ensure_default_admin()
 
-    # Start queue worker for raw stream ingestion
     await ingestion_service.start_worker()
     await retention_service.start_scheduler()
 
@@ -128,7 +115,6 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
     print("Shutting down GPS Tracking System...")
     await stream_listener_service.stop()
     await ingestion_service.stop_worker()
@@ -136,13 +122,11 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-# Create FastAPI app
 app = FastAPI(
     title="GPS Tracking System",
     description="""
     Real-Time GPS Tracking and Movement Intelligence System
     
-    ## Features
     
     * **Live GPS Tracking**: Receive and process GPS data from multiple devices
     * **Movement Analytics**: Speed calculation, distance tracking, stationary detection
@@ -150,7 +134,6 @@ app = FastAPI(
     * **Real-time Alerts**: Instant notifications for anomalies
     * **WebSocket Updates**: Live map updates via Socket.IO
     
-    ## Architecture
     
     ```
     GPS Simulator → FastAPI Backend → MongoDB Database
@@ -164,7 +147,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure properly for production
@@ -173,7 +155,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API routers
 app.include_router(gps_router, prefix="/api")
 app.include_router(alert_router, prefix="/api")
 app.include_router(geofence_router, prefix="/api")
@@ -193,9 +174,6 @@ app.include_router(governance_router, prefix="/api")
 app.include_router(intelligence_router, prefix="/api")
 
 
-# =============================================================================
-# HEALTH CHECK ENDPOINTS
-# =============================================================================
 
 @app.get("/", tags=["Health"])
 async def root():
@@ -213,7 +191,6 @@ async def health_check():
     """Health check endpoint."""
     db = get_database()
     try:
-        # Quick MongoDB ping
         await db.command("ping")
         db_status = "connected"
     except Exception as e:
@@ -225,17 +202,10 @@ async def health_check():
     }
 
 
-# =============================================================================
-# SOCKET.IO APP WRAPPER
-# =============================================================================
 
-# Wrap FastAPI app with Socket.IO
 socket_app = socketio.ASGIApp(sio, app)
 
 
-# =============================================================================
-# MAIN ENTRY POINT
-# =============================================================================
 
 if __name__ == "__main__":
     uvicorn.run(

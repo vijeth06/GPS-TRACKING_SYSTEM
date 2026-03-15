@@ -37,8 +37,6 @@ def create_geofence_document(
     Returns:
         Geofence document dictionary
     """
-    # Convert coordinates to GeoJSON format [lng, lat]
-    # Ensure polygon is closed (first point = last point)
     geojson_coords = [[coord["lng"], coord["lat"]] for coord in coordinates]
     if geojson_coords[0] != geojson_coords[-1]:
         geojson_coords.append(geojson_coords[0])
@@ -47,12 +45,10 @@ def create_geofence_document(
     return {
         "name": name,
         "description": description,
-        # GeoJSON Polygon format for MongoDB geospatial queries
         "geometry": {
             "type": "Polygon",
             "coordinates": [geojson_coords]  # Array of linear rings
         },
-        # Store original coordinates for easy retrieval
         "coordinates": coordinates,
         "fence_type": fence_type,
         "is_active": is_active,

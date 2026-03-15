@@ -219,7 +219,6 @@ async def get_device_trail(
     Returns:
         Trail data including points and total distance
     """
-    # Default to last 24 hours if no time range specified
     if not end_time:
         end_time = datetime.utcnow()
     if not start_time:

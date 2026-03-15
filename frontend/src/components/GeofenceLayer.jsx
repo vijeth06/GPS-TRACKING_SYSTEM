@@ -1,14 +1,7 @@
-/**
- * GeofenceLayer Component
- * 
- * Displays geofence polygon boundaries on the map.
- * Color indicates fence type (restricted, allowed, warning).
- */
 
 import React from 'react'
 import { Polygon, Tooltip } from 'react-leaflet'
 
-// Geofence colors by type
 const FENCE_COLORS = {
   restricted: {
     color: '#ef4444', // Red
@@ -29,10 +22,8 @@ function GeofenceLayer({ geofence }) {
     return null
   }
 
-  // Convert coordinates to Leaflet format
   const positions = geofence.coordinates.map((coord) => [coord.lat, coord.lng])
 
-  // Get colors based on fence type
   const colors = FENCE_COLORS[geofence.fence_type] || FENCE_COLORS.warning
 
   return (
