@@ -53,6 +53,7 @@ async def start_stream_listener(
         protocol=payload.protocol,
         host=payload.host,
         port=payload.port,
+        dataset_profile=payload.dataset_profile,
     )
     return StreamListenerStatus(**status)
 

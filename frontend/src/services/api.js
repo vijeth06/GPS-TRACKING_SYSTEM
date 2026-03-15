@@ -276,6 +276,21 @@ export const ingestRawPacket = async (packet, options = {}) => {
   return response.data
 }
 
+export const getStreamListenerStatus = async () => {
+  const response = await api.get('/ingest/stream/status')
+  return response.data
+}
+
+export const startStreamListener = async (payload = {}) => {
+  const response = await api.post('/ingest/stream/start', payload)
+  return response.data
+}
+
+export const stopStreamListener = async () => {
+  const response = await api.post('/ingest/stream/stop')
+  return response.data
+}
+
 /**
  * List GeoServer layers configured in backend
  */

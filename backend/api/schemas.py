@@ -554,6 +554,20 @@ class StreamListenerStartRequest(BaseModel):
     protocol: Optional[str] = Field(None, description="udp or tcp")
     host: Optional[str] = Field(None, description="bind host")
     port: Optional[int] = Field(None, ge=1, le=65535)
+    dataset_profile: Optional[str] = Field(
+        None,
+        description="strict | flexible | vendor_x",
+    )
+
+    @validator("dataset_profile")
+    def validate_dataset_profile(cls, value):
+        if value is None:
+            return value
+        normalized = value.strip().lower()
+        allowed = {"strict", "flexible", "vendor_x"}
+        if normalized not in allowed:
+            raise ValueError("dataset_profile must be one of: strict, flexible, vendor_x")
+        return normalized
 
 
 class StreamListenerStatus(BaseModel):
@@ -561,6 +575,7 @@ class StreamListenerStatus(BaseModel):
     protocol: str
     host: str
     port: int
+    dataset_profile: str = "flexible"
     received_count: int
     parsed_count: int
     rejected_count: int

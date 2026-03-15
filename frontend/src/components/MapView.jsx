@@ -188,6 +188,18 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
             </div>
           </div>
         </div>
+
+        <div className="mt-3 pt-3 border-t border-slate-200">
+          <p className="text-[11px] font-semibold text-slate-600 mb-2 uppercase tracking-wide">
+            Trail Route <span className="normal-case font-normal text-slate-400">(selected device path)</span>
+          </p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <TrailLegendLine color="bg-slate-500" label="Stationary" />
+            <TrailLegendLine color="bg-amber-500" label="Slow" />
+            <TrailLegendLine color="bg-green-500" label="Normal" />
+            <TrailLegendLine color="bg-red-500" label="Fast" />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -206,6 +218,18 @@ function LegendItem({ color, label, ring = false, borderColor = '', glowColor = 
       ) : (
         <div className={`w-3 h-3 rounded-full ${color}`} />
       )}
+      <span className="text-xs text-slate-600">{label}</span>
+    </div>
+  )
+}
+
+function TrailLegendLine({ color, label }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative w-8 h-2">
+        <div className="absolute inset-0 rounded-full bg-white border border-slate-300" />
+        <div className={`absolute left-0 right-0 top-[2px] h-1 rounded-full ${color}`} />
+      </div>
       <span className="text-xs text-slate-600">{label}</span>
     </div>
   )

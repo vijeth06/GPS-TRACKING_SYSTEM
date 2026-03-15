@@ -9,7 +9,7 @@ import React from 'react'
 import { Polyline, CircleMarker, Tooltip } from 'react-leaflet'
 
 // Trail colors
-const TRAIL_COLOR = '#3b82f6' // Blue
+const TRAIL_COLOR = '#2563eb' // Blue
 const TRAIL_START_COLOR = '#22c55e' // Green
 const TRAIL_END_COLOR = '#ef4444' // Red
 
@@ -56,14 +56,27 @@ function TrailLayer({ trail }) {
 
   return (
     <>
-      {/* Main trail line */}
+      {/* High-contrast casing for readability on mixed map backgrounds */}
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: '#ffffff',
+          weight: 9,
+          opacity: 0.92,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }}
+      />
+
+      {/* Main route backbone */}
       <Polyline
         positions={positions}
         pathOptions={{
           color: TRAIL_COLOR,
-          weight: 3,
-          opacity: 0.7,
-          dashArray: '5, 5',
+          weight: 5,
+          opacity: 0.85,
+          lineCap: 'round',
+          lineJoin: 'round',
         }}
       />
 
@@ -74,8 +87,10 @@ function TrailLayer({ trail }) {
           positions={segment.positions}
           pathOptions={{
             color: segment.color,
-            weight: 4,
-            opacity: 0.8,
+            weight: 6,
+            opacity: 0.96,
+            lineCap: 'round',
+            lineJoin: 'round',
           }}
         />
       ))}
@@ -83,12 +98,12 @@ function TrailLayer({ trail }) {
       {/* Start point marker */}
       <CircleMarker
         center={[startPoint.lat, startPoint.lng]}
-        radius={8}
+        radius={9}
         pathOptions={{
           color: '#fff',
           fillColor: TRAIL_START_COLOR,
           fillOpacity: 1,
-          weight: 2,
+          weight: 3,
         }}
       >
         <Tooltip permanent direction="top" offset={[0, -10]}>
@@ -99,12 +114,12 @@ function TrailLayer({ trail }) {
       {/* End point marker */}
       <CircleMarker
         center={[endPoint.lat, endPoint.lng]}
-        radius={8}
+        radius={9}
         pathOptions={{
           color: '#fff',
           fillColor: TRAIL_END_COLOR,
           fillOpacity: 1,
-          weight: 2,
+          weight: 3,
         }}
       >
         <Tooltip permanent direction="top" offset={[0, -10]}>

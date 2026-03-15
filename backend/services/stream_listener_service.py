@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import re
 
 from backend.api.schemas import RawGPSPacket
@@ -18,6 +18,7 @@ class StreamListenerService:
         self._host = os.getenv("STREAM_HOST", "0.0.0.0")
         self._port = int(os.getenv("STREAM_PORT", "9100"))
         self._default_device_id = os.getenv("STREAM_DEFAULT_DEVICE_ID", "gpsfeed_device")
+        self._dataset_profile = (os.getenv("STREAM_DATASET_PROFILE", "flexible") or "flexible").strip().lower()
         self._udp_transport = None
         self._tcp_server = None
 
@@ -27,7 +28,13 @@ class StreamListenerService:
         self.last_packet_at: Optional[datetime] = None
         self.last_error: Optional[str] = None
 
-    async def start(self, protocol: Optional[str] = None, host: Optional[str] = None, port: Optional[int] = None) -> Dict[str, Any]:
+    async def start(
+        self,
+        protocol: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        dataset_profile: Optional[str] = None,
+    ) -> Dict[str, Any]:
         if self._running:
             return self.status()
 
@@ -37,6 +44,10 @@ class StreamListenerService:
             self._host = host
         if port:
             self._port = int(port)
+        if dataset_profile:
+            profile = dataset_profile.strip().lower()
+            if profile in ["strict", "flexible", "vendor_x"]:
+                self._dataset_profile = profile
 
         self.last_error = None
 
@@ -72,7 +83,14 @@ class StreamListenerService:
 
     async def ingest_message(self, message: str, source: str = "stream_port") -> None:
         self.received_count += 1
-        payload = self._safe_parse_json(message)
+        payload = None
+        raw_json = self._safe_parse_json(message)
+        if raw_json:
+            payload = self._normalize_json_payload(
+                raw_json,
+                self._default_device_id,
+                self._dataset_profile,
+            )
         if not payload:
             # Try NMEA before rejecting
             payload = self._parse_nmea(message, self._default_device_id)
@@ -117,6 +135,7 @@ class StreamListenerService:
             "protocol": self._protocol,
             "host": self._host,
             "port": self._port,
+            "dataset_profile": self._dataset_profile,
             "received_count": self.received_count,
             "parsed_count": self.parsed_count,
             "rejected_count": self.rejected_count,
@@ -133,6 +152,183 @@ class StreamListenerService:
             return None
 
     @staticmethod
+    def _pick(obj: Dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            if key in obj and obj[key] is not None:
+                return obj[key]
+        return None
+
+    @staticmethod
+    def _to_iso_timestamp(value: Any) -> str:
+        """Normalize timestamps (ISO string or epoch seconds/millis) to ISO-8601 string."""
+        if value is None:
+            return datetime.utcnow().isoformat()
+
+        if isinstance(value, (int, float)):
+            # Heuristic: epoch millis if value is large
+            epoch = float(value)
+            if epoch > 1e12:
+                epoch = epoch / 1000.0
+            return datetime.utcfromtimestamp(epoch).isoformat()
+
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return datetime.utcnow().isoformat()
+            # Numeric epoch in string
+            if re.fullmatch(r"\d+(\.\d+)?", raw):
+                num = float(raw)
+                if num > 1e12:
+                    num = num / 1000.0
+                return datetime.utcfromtimestamp(num).isoformat()
+            # Assume ISO-like datetime string
+            return raw
+
+        return datetime.utcnow().isoformat()
+
+    @classmethod
+    def _extract_coordinates(cls, payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+        lat = cls._pick(payload, "latitude", "lat")
+        lon = cls._pick(payload, "longitude", "lng", "lon", "long")
+
+        if lat is not None and lon is not None:
+            return float(lat), float(lon)
+
+        # Nested location objects
+        location = payload.get("location") if isinstance(payload.get("location"), dict) else None
+        if location:
+            lat = cls._pick(location, "latitude", "lat")
+            lon = cls._pick(location, "longitude", "lng", "lon", "long")
+            if lat is not None and lon is not None:
+                return float(lat), float(lon)
+
+        # GeoJSON style coordinates: [lon, lat]
+        coords = payload.get("coordinates") or payload.get("coords")
+        if isinstance(coords, list) and len(coords) >= 2:
+            a = float(coords[0])
+            b = float(coords[1])
+            # Prefer geojson ordering if possible
+            if abs(a) <= 180 and abs(b) <= 90:
+                return b, a
+            if abs(a) <= 90 and abs(b) <= 180:
+                return a, b
+
+        return None, None
+
+    @classmethod
+    def _normalize_json_payload(
+        cls,
+        payload: Dict[str, Any],
+        default_device_id: str,
+        profile: str = "flexible",
+    ) -> Optional[Dict[str, Any]]:
+        """Normalize diverse realtime JSON datasets to the canonical packet shape."""
+        profile = (profile or "flexible").strip().lower()
+
+        if profile == "strict":
+            device = cls._pick(payload, "device_id", "id", "device")
+            lat = cls._pick(payload, "latitude", "lat")
+            lon = cls._pick(payload, "longitude", "lng", "lon")
+            if device is None or lat is None or lon is None:
+                return None
+            return {
+                "device_id": str(device),
+                "latitude": float(lat),
+                "longitude": float(lon),
+                "timestamp": cls._to_iso_timestamp(cls._pick(payload, "timestamp", "ts")),
+                "speed": float(payload["speed"]) if payload.get("speed") is not None else None,
+                "heading": float(payload["heading"]) if payload.get("heading") is not None else None,
+                "accuracy": float(payload["accuracy"]) if payload.get("accuracy") is not None else None,
+                "altitude": float(payload["altitude"]) if payload.get("altitude") is not None else None,
+                "source": cls._pick(payload, "source") or "json_strict",
+            }
+
+        if profile == "vendor_x":
+            # Example vendor profile with fixed aliases often seen in legacy feeds.
+            device = cls._pick(payload, "devId", "deviceId", "imei", "tracker")
+            lat = cls._pick(payload, "gpsLat", "lat", "latitude")
+            lon = cls._pick(payload, "gpsLon", "lng", "lon", "longitude")
+            if device is None or lat is None or lon is None:
+                return None
+
+            speed = cls._pick(payload, "spd", "speed", "speedKmh")
+            if speed is None and cls._pick(payload, "speedMph") is not None:
+                speed = float(cls._pick(payload, "speedMph")) * 1.60934
+
+            heading = cls._pick(payload, "brg", "bearing", "heading")
+            timestamp = cls._pick(payload, "timeMs", "time", "timestamp")
+            accuracy_val = cls._pick(payload, "hdop", "accuracy")
+            altitude_val = cls._pick(payload, "alt", "altitude")
+
+            return {
+                "device_id": str(device),
+                "latitude": float(lat),
+                "longitude": float(lon),
+                "timestamp": cls._to_iso_timestamp(timestamp),
+                "speed": float(speed) if speed is not None else None,
+                "heading": float(heading) if heading is not None else None,
+                "accuracy": float(accuracy_val) if accuracy_val is not None else None,
+                "altitude": float(altitude_val) if altitude_val is not None else None,
+                "source": cls._pick(payload, "source") or "json_vendor_x",
+            }
+
+        obj = payload
+
+        # Unwrap common wrappers: {"data": {...}} / {"payload": {...}} / {"gps": {...}}
+        for key in ("data", "payload", "gps", "position"):
+            wrapped = obj.get(key)
+            if isinstance(wrapped, dict):
+                obj = wrapped
+                break
+
+        device = cls._pick(
+            obj,
+            "device_id",
+            "id",
+            "device",
+            "imei",
+            "tracker_id",
+            "asset_id",
+            "unit_id",
+        )
+        if isinstance(device, dict):
+            device = cls._pick(device, "id", "device_id", "imei")
+        if device is None:
+            meta = obj.get("meta") if isinstance(obj.get("meta"), dict) else {}
+            device = cls._pick(meta, "device_id", "id", "imei")
+
+        lat, lon = cls._extract_coordinates(obj)
+        if lat is None or lon is None:
+            return None
+
+        # Speed normalization to km/h
+        speed = cls._pick(obj, "speed", "speed_kmh", "velocity")
+        if speed is None:
+            speed_mph = cls._pick(obj, "speed_mph", "mph")
+            speed_knots = cls._pick(obj, "speed_knots", "knots")
+            if speed_mph is not None:
+                speed = float(speed_mph) * 1.60934
+            elif speed_knots is not None:
+                speed = float(speed_knots) * 1.852
+
+        heading = cls._pick(obj, "heading", "bearing", "course", "track")
+        accuracy = cls._pick(obj, "accuracy", "hdop", "h_accuracy", "horizontal_accuracy")
+        altitude = cls._pick(obj, "altitude", "alt", "elevation")
+        ts_raw = cls._pick(obj, "timestamp", "ts", "time", "datetime", "recorded_at", "gps_time")
+
+        return {
+            "device_id": str(device or default_device_id),
+            "latitude": float(lat),
+            "longitude": float(lon),
+            "timestamp": cls._to_iso_timestamp(ts_raw),
+            "speed": float(speed) if speed is not None else None,
+            "heading": float(heading) if heading is not None else None,
+            "accuracy": float(accuracy) if accuracy is not None else None,
+            "altitude": float(altitude) if altitude is not None else None,
+            "source": cls._pick(obj, "source", "provider", "origin") or "json_stream",
+        }
+
+    @staticmethod
     def _nmea_lat_lon(value_str: str, direction: str) -> float:
         """Convert NMEA ddmm.mmmm / dddmm.mmmm to decimal degrees."""
         value = float(value_str)
@@ -147,9 +343,9 @@ class StreamListenerService:
     def _parse_nmea(cls, raw: str, default_device_id: str) -> Optional[Dict[str, Any]]:
         """
         Parse NMEA 0183 sentences from GPSFeed+.
-        Supports:
-          $GPRMC  — recommended minimum (lat/lon/speed/heading/time)
-          $GPGGA  — fix data (lat/lon/altitude/accuracy)
+                Supports:
+                    $GPRMC / $GNRMC — recommended minimum (lat/lon/speed/heading/time)
+                    $GPGGA / $GNGGA — fix data (lat/lon/altitude/accuracy)
         GPSFeed+ may optionally prepend a device-id prefix:
           "TRK101,$GPRMC,..." or "$GPRMC,..." (uses STREAM_DEFAULT_DEVICE_ID)
         """
@@ -171,7 +367,7 @@ class StreamListenerService:
         sentence_type = parts[0].upper()
 
         try:
-            if sentence_type == '$GPRMC':
+            if sentence_type in ('$GPRMC', '$GNRMC'):
                 # $GPRMC,hhmmss.ss,A,lat,N/S,lon,E/W,speed_knots,heading,ddmmyy,...
                 if len(parts) < 9:
                     return None
@@ -198,7 +394,7 @@ class StreamListenerService:
                     "source": "nmea_gprmc",
                 }
 
-            elif sentence_type == '$GPGGA':
+            elif sentence_type in ('$GPGGA', '$GNGGA'):
                 # $GPGGA,hhmmss.ss,lat,N/S,lon,E/W,fix,sats,hdop,alt,M,...
                 if len(parts) < 10:
                     return None

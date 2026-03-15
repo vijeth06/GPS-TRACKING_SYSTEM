@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import {
+  getStreamListenerStatus,
+  startStreamListener,
+  stopStreamListener,
   getNotificationChannels,
   saveNotificationChannel,
   testNotificationChannel,
@@ -24,6 +27,7 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
   const [message, setMessage] = useState('')
 
   const [channels, setChannels] = useState([])
+  const [streamStatus, setStreamStatus] = useState(null)
   const [rules, setRules] = useState([])
   const [routePlans, setRoutePlans] = useState([])
   const [reporting, setReporting] = useState(null)
@@ -42,12 +46,16 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
   const [newUsername, setNewUsername] = useState('ops_lead')
   const [newPassword, setNewPassword] = useState('ops123')
   const [teamName, setTeamName] = useState('Ops Alpha')
+  const [streamProtocol, setStreamProtocol] = useState('udp')
+  const [streamPort, setStreamPort] = useState(9100)
+  const [datasetProfile, setDatasetProfile] = useState('flexible')
 
   const refreshAll = async (showBusy = false) => {
     try {
       if (showBusy) setBusy(true)
       setMessage('')
       const [
+        streamData,
         channelData,
         ruleData,
         routeData,
@@ -56,6 +64,7 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
         userData,
         teamData,
       ] = await Promise.all([
+        getStreamListenerStatus(),
         getNotificationChannels(),
         getAutomationRules(),
         getRoutePlans(),
@@ -64,6 +73,10 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
         isAdmin ? getAdminUsers() : Promise.resolve([]),
         canOperate ? getTeams() : Promise.resolve([]),
       ])
+      setStreamStatus(streamData)
+      if (streamData?.protocol) setStreamProtocol(streamData.protocol)
+      if (streamData?.port) setStreamPort(streamData.port)
+      if (streamData?.dataset_profile) setDatasetProfile(streamData.dataset_profile)
       setChannels(channelData)
       setRules(ruleData)
       setRoutePlans(routeData)
@@ -81,6 +94,36 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
       }
     } catch (error) {
       setMessage(`Error: ${error?.response?.data?.detail || error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onStartStream = async () => {
+    try {
+      setBusy(true)
+      const status = await startStreamListener({
+        protocol: streamProtocol,
+        port: Number(streamPort),
+        dataset_profile: datasetProfile,
+      })
+      setStreamStatus(status)
+      setMessage(`Stream started (${status.protocol.toUpperCase()}:${status.port}) with ${status.dataset_profile} profile`)
+    } catch (error) {
+      setMessage(`Stream start failed: ${error?.response?.data?.detail || error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onStopStream = async () => {
+    try {
+      setBusy(true)
+      const status = await stopStreamListener()
+      setStreamStatus(status)
+      setMessage('Stream stopped')
+    } catch (error) {
+      setMessage(`Stream stop failed: ${error?.response?.data?.detail || error.message}`)
     } finally {
       setBusy(false)
     }
@@ -232,6 +275,31 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
       </div>
 
       <div className="grid grid-cols-1 gap-2">
+        <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70">
+          <p className="font-semibold text-indigo-900">Realtime Stream (GPSFeed+)</p>
+          <p className="text-xs text-indigo-700 mt-0.5">
+            Status: {streamStatus?.running ? 'running' : 'stopped'}
+            {' '}| Parsed: {streamStatus?.parsed_count ?? 0}
+            {' '}| Rejected: {streamStatus?.rejected_count ?? 0}
+          </p>
+          <div className="mt-1 grid grid-cols-1 gap-1">
+            <select value={streamProtocol} onChange={(e) => setStreamProtocol(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white">
+              <option value="udp">UDP</option>
+              <option value="tcp">TCP</option>
+            </select>
+            <input type="number" value={streamPort} onChange={(e) => setStreamPort(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white" />
+            <select value={datasetProfile} onChange={(e) => setDatasetProfile(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white">
+              <option value="strict">Strict Dataset</option>
+              <option value="flexible">Flexible Dataset</option>
+              <option value="vendor_x">Vendor-X Dataset</option>
+            </select>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button type="button" disabled={busy || !canOperate} onClick={onStartStream} className="px-3 py-1.5 rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-60">Start Stream</button>
+            <button type="button" disabled={busy || !canOperate} onClick={onStopStream} className="px-3 py-1.5 rounded-lg bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-60">Stop Stream</button>
+          </div>
+        </div>
+
         <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70">
           <p className="font-semibold text-indigo-900">Notifications</p>
           <p className="text-xs text-indigo-700 mt-0.5">Channels: {channels.length}</p>
