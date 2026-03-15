@@ -40,7 +40,7 @@ function IncidentWorkspace({ selectedAlert }) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 space-y-3 max-h-[320px] overflow-auto custom-scrollbar">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-red-600" /> Incident Workspace

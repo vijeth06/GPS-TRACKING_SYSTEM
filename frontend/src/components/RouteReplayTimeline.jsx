@@ -78,7 +78,7 @@ function RouteReplayTimeline({ selectedDevice, onReplayPointChange }) {
   }, [current])
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <Route className="w-4 h-4 text-blue-600" /> Route Replay Timeline

@@ -161,16 +161,26 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000]">
-        <h4 className="text-xs font-semibold text-gray-700 mb-2">Status Legend</h4>
-        <div className="space-y-1">
-          <LegendItem color="bg-green-500" label="Connectivity: Online" />
-          <LegendItem color="bg-yellow-500" label="Connectivity: Delayed" />
-          <LegendItem color="bg-gray-300" label="Connectivity: Offline" />
-          <LegendItem color="bg-gray-500" label="Movement: Stationary" />
-          <LegendItem color="bg-yellow-500" label="Movement: Slow (5-20 km/h)" />
-          <LegendItem color="bg-green-500" label="Movement: Normal (20-60 km/h)" />
-          <LegendItem color="bg-red-500" label="Movement: Fast (>60 km/h)" />
+      <div className="absolute bottom-4 left-4 right-4 md:right-auto md:w-[350px] bg-white/95 backdrop-blur p-3 rounded-xl shadow-lg border border-slate-200 z-[1000]">
+        <h4 className="text-xs font-semibold text-slate-800 mb-2 uppercase tracking-wide">Map Legend</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <p className="text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">Connectivity</p>
+            <div className="space-y-1">
+              <LegendItem color="bg-green-500" label="Online" />
+              <LegendItem color="bg-amber-500" label="Delayed" />
+              <LegendItem color="bg-gray-300" label="Offline" />
+            </div>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">Movement</p>
+            <div className="space-y-1">
+              <LegendItem color="bg-slate-500" label="Stationary" />
+              <LegendItem color="bg-amber-500" label="Slow (5-20 km/h)" />
+              <LegendItem color="bg-green-500" label="Normal (20-60 km/h)" />
+              <LegendItem color="bg-red-500" label="Fast (>60 km/h)" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -180,8 +190,8 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
 function LegendItem({ color, label }) {
   return (
     <div className="flex items-center space-x-2">
-      <div className={`w-3 h-3 rounded-full ${color}`} />
-      <span className="text-xs text-gray-600">{label}</span>
+      <div className={`w-3 h-3 rounded-full ring-2 ring-white ${color}`} />
+      <span className="text-xs text-slate-600">{label}</span>
     </div>
   )
 }

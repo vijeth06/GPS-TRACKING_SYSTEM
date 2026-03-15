@@ -1,11 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Custom styles for the GPS Tracking Dashboard */
 
+:root {
+  --bg-0: #f2f6f9;
+  --bg-1: #dce7ef;
+  --ink-0: #0f172a;
+  --ink-1: #334155;
+  --accent-0: #f59e0b;
+  --accent-1: #0ea5e9;
+}
+
 body {
-  @apply bg-gray-100;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  color: var(--ink-0);
+  background:
+    radial-gradient(circle at 8% 8%, rgba(245, 158, 11, 0.16), transparent 38%),
+    radial-gradient(circle at 92% 18%, rgba(14, 165, 233, 0.16), transparent 42%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1));
+}
+
+h1, h2, h3 {
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.dashboard-shell {
+  position: relative;
+}
+
+.dashboard-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.35;
+}
+
+.dashboard-header-card {
+  @apply rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20;
+  background: linear-gradient(135deg, #0f172a, #1e293b 40%, #0369a1);
+  animation: card-enter 260ms ease-out;
+}
+
+.panel-card {
+  @apply rounded-2xl border border-white/60 bg-white/95 shadow-[0_18px_40px_rgba(15,23,42,0.10)];
+  animation: card-enter 240ms ease-out;
+}
+
+.panel-title {
+  @apply text-base font-bold text-slate-800;
 }
 
 /* Leaflet custom marker styles */
@@ -95,6 +148,17 @@ body {
 /* Card hover effects */
 .card-hover {
   @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Geofence polygon styles */

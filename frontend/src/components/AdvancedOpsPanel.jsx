@@ -217,79 +217,79 @@ function AdvancedOpsPanel({ role = 'viewer', selectedDevice }) {
   }
 
   return (
-    <div className="space-y-3 text-xs border border-gray-200 rounded-lg p-3 bg-gray-50">
+    <div className="space-y-3 text-sm panel-card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">Advanced Operations</h3>
+        <h3 className="panel-title">Advanced Operations</h3>
         <button
           type="button"
           disabled={busy}
           onClick={refreshAll}
-          className="px-2 py-1 rounded bg-white border border-gray-200 disabled:opacity-60"
+          className="px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-colors disabled:opacity-60"
         >
           Refresh
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-2">
-        <div className="p-2 rounded border border-indigo-200 bg-indigo-50">
-          <p className="font-medium text-indigo-900">Notifications</p>
-          <p>Channels: {channels.length}</p>
+        <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70">
+          <p className="font-semibold text-indigo-900">Notifications</p>
+          <p className="text-xs text-indigo-700 mt-0.5">Channels: {channels.length}</p>
           <div className="mt-1 grid grid-cols-1 gap-1">
-            <input value={channelName} onChange={(e) => setChannelName(e.target.value)} className="px-2 py-1 rounded border" />
-            <input value={channelType} onChange={(e) => setChannelType(e.target.value)} className="px-2 py-1 rounded border" />
-            <input value={channelRecipient} onChange={(e) => setChannelRecipient(e.target.value)} className="px-2 py-1 rounded border" />
+            <input value={channelName} onChange={(e) => setChannelName(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white" />
+            <input value={channelType} onChange={(e) => setChannelType(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white" />
+            <input value={channelRecipient} onChange={(e) => setChannelRecipient(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white" />
           </div>
-          <button type="button" disabled={busy || !canOperate} onClick={onSaveChannel} className="mt-1 px-2 py-1 rounded bg-indigo-600 text-white disabled:opacity-60">Save & Test</button>
+          <button type="button" disabled={busy || !canOperate} onClick={onSaveChannel} className="mt-2 px-3 py-1.5 rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-60">Save & Test</button>
         </div>
 
-        <div className="p-2 rounded border border-cyan-200 bg-cyan-50">
-          <p className="font-medium text-cyan-900">Rule Engine</p>
-          <p>Rules: {rules.length}</p>
-          <input value={ruleName} onChange={(e) => setRuleName(e.target.value)} className="mt-1 w-full px-2 py-1 rounded border" />
-          <button type="button" disabled={busy || !canOperate} onClick={onCreateRule} className="mt-1 px-2 py-1 rounded bg-cyan-700 text-white disabled:opacity-60">Add Rule</button>
+        <div className="p-3 rounded-xl border border-cyan-200 bg-cyan-50/70">
+          <p className="font-semibold text-cyan-900">Rule Engine</p>
+          <p className="text-xs text-cyan-700 mt-0.5">Rules: {rules.length}</p>
+          <input value={ruleName} onChange={(e) => setRuleName(e.target.value)} className="mt-1 w-full px-2.5 py-1.5 rounded-lg border border-cyan-200 bg-white" />
+          <button type="button" disabled={busy || !canOperate} onClick={onCreateRule} className="mt-2 px-3 py-1.5 rounded-lg bg-cyan-700 text-white hover:bg-cyan-800 disabled:opacity-60">Add Rule</button>
         </div>
 
-        <div className="p-2 rounded border border-emerald-200 bg-emerald-50">
-          <p className="font-medium text-emerald-900">Route Deviation</p>
-          <p>Route plans: {routePlans.length}</p>
-          <input value={routeName} onChange={(e) => setRouteName(e.target.value)} className="mt-1 w-full px-2 py-1 rounded border" />
-          <button type="button" disabled={busy || !canOperate} onClick={onCreateRoute} className="mt-1 px-2 py-1 rounded bg-emerald-700 text-white disabled:opacity-60">Create Route</button>
+        <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/70">
+          <p className="font-semibold text-emerald-900">Route Deviation</p>
+          <p className="text-xs text-emerald-700 mt-0.5">Route plans: {routePlans.length}</p>
+          <input value={routeName} onChange={(e) => setRouteName(e.target.value)} className="mt-1 w-full px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-white" />
+          <button type="button" disabled={busy || !canOperate} onClick={onCreateRoute} className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60">Create Route</button>
         </div>
 
-        <div className="p-2 rounded border border-amber-200 bg-amber-50">
-          <p className="font-medium text-amber-900">Reporting & Intelligence</p>
-          {reporting && <p>24h alerts: {reporting.total_alerts} | resolved: {reporting.resolved_alerts} | avg speed: {reporting.avg_speed}</p>}
-          {anomaly && <p>Anomaly for {anomaly.device_id}: score {anomaly.anomaly_score} ({anomaly.reason})</p>}
+        <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/70">
+          <p className="font-semibold text-amber-900">Reporting & Intelligence</p>
+          {reporting && <p className="text-xs text-amber-800 mt-1">24h alerts: {reporting.total_alerts} | resolved: {reporting.resolved_alerts} | avg speed: {reporting.avg_speed}</p>}
+          {anomaly && <p className="text-xs text-amber-800 mt-1">Anomaly for {anomaly.device_id}: score {anomaly.anomaly_score} ({anomaly.reason})</p>}
         </div>
 
         {(isAdmin || canOperate) && (
-          <div className="p-2 rounded border border-rose-200 bg-rose-50">
-            <p className="font-medium text-rose-900">Teams & Users</p>
-            <p>Users: {users.length} | Teams: {teams.length}</p>
+          <div className="p-3 rounded-xl border border-rose-200 bg-rose-50/70">
+            <p className="font-semibold text-rose-900">Teams & Users</p>
+            <p className="text-xs text-rose-700 mt-0.5">Users: {users.length} | Teams: {teams.length}</p>
             {isAdmin && (
               <div className="mt-1 grid grid-cols-1 gap-1">
-                <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="px-2 py-1 rounded border" />
-                <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="px-2 py-1 rounded border" />
-                <button type="button" disabled={busy} onClick={onCreateUser} className="px-2 py-1 rounded bg-rose-700 text-white disabled:opacity-60">Create User</button>
+                <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white" />
+                <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white" />
+                <button type="button" disabled={busy} onClick={onCreateUser} className="px-3 py-1.5 rounded-lg bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60">Create User</button>
               </div>
             )}
             <div className="mt-1 grid grid-cols-1 gap-1">
-              <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="px-2 py-1 rounded border" />
-              <button type="button" disabled={busy || !canOperate} onClick={onCreateTeam} className="px-2 py-1 rounded bg-rose-600 text-white disabled:opacity-60">Create Team</button>
+              <input value={teamName} onChange={(e) => setTeamName(e.target.value)} className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white" />
+              <button type="button" disabled={busy || !canOperate} onClick={onCreateTeam} className="px-3 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60">Create Team</button>
             </div>
           </div>
         )}
 
         {isAdmin && governance && (
-          <div className="p-2 rounded border border-slate-300 bg-slate-100">
-            <p className="font-medium text-slate-900">Data Governance</p>
-            <p>Mask IDs: {governance.mask_device_identifier ? 'yes' : 'no'} | Precision: {governance.mask_precision_decimals}</p>
-            <button type="button" disabled={busy} onClick={onTightenGovernance} className="mt-1 px-2 py-1 rounded bg-slate-800 text-white disabled:opacity-60">Tighten Policy</button>
+          <div className="p-3 rounded-xl border border-slate-300 bg-slate-100/90">
+            <p className="font-semibold text-slate-900">Data Governance</p>
+            <p className="text-xs text-slate-700 mt-1">Mask IDs: {governance.mask_device_identifier ? 'yes' : 'no'} | Precision: {governance.mask_precision_decimals}</p>
+            <button type="button" disabled={busy} onClick={onTightenGovernance} className="mt-2 px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 disabled:opacity-60">Tighten Policy</button>
           </div>
         )}
       </div>
 
-      {message && <p className="text-gray-600">{message}</p>}
+      {message && <p className="text-xs text-slate-600 rounded-lg bg-slate-100 px-2 py-1">{message}</p>}
     </div>
   )
 }

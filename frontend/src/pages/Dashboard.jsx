@@ -19,8 +19,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { 
-  MapPin, Activity, AlertTriangle, Truck, 
-  Timer, Gauge, Route, Bell 
+  MapPin, Activity, AlertTriangle, Truck, Gauge, Bell, ShieldCheck, Route, SearchCheck, Wrench, LayoutGrid
 } from 'lucide-react'
 import MapView from '../components/MapView'
 import DeviceList from '../components/DeviceList'
@@ -51,6 +50,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [replayPoint, setReplayPoint] = useState(null)
   const [selectedAlert, setSelectedAlert] = useState(null)
+  const [workspaceTab, setWorkspaceTab] = useState('all')
 
   // Initial data fetch
   useEffect(() => {
@@ -167,45 +167,45 @@ function Dashboard() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="dashboard-shell min-h-screen">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-full mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
+      <header className="px-4 pt-4 md:px-6 md:pt-6">
+        <div className="dashboard-header-card">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-500 p-2 rounded-xl shadow-lg shadow-amber-500/30">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-2xl font-extrabold tracking-tight text-white">
                   GPS Tracking System
                 </h1>
-                <p className="text-sm text-gray-500">
-                  Real-Time Movement Intelligence
+                <p className="text-sm text-slate-200">
+                  Real-Time Fleet Command Center
                 </p>
               </div>
             </div>
             
             {/* Connection Status */}
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">{user?.username}</p>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">{user?.role}</p>
+                <p className="text-sm font-medium text-white">{user?.username}</p>
+                <p className="text-xs text-slate-300 uppercase tracking-widest">{user?.role}</p>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur">
                 <div
                   className={`w-3 h-3 rounded-full ${
-                    isConnected ? 'bg-green-500 pulse-animation' : 'bg-red-500'
+                    isConnected ? 'bg-emerald-400 pulse-animation' : 'bg-rose-500'
                   }`}
                 />
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-white">
                   {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={logout}
-                className="text-sm px-3 py-1 rounded bg-gray-100 hover:bg-gray-200"
+                className="text-sm px-3 py-1 rounded-lg bg-white text-slate-800 hover:bg-amber-100 transition-colors"
               >
                 Logout
               </button>
@@ -213,7 +213,7 @@ function Dashboard() {
           </div>
 
           {/* Stats Bar */}
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
               icon={<Truck className="w-5 h-5" />}
               label="Total Devices"
@@ -243,10 +243,10 @@ function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-full mx-auto px-4 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-220px)]">
+      <main className="px-4 pb-6 pt-4 md:px-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-230px)] min-h-[720px]">
           {/* Map Section - Takes 3/4 on large screens */}
-          <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="xl:col-span-8 panel-card p-2 overflow-hidden">
             {loading ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-gray-500">Loading map...</div>
@@ -263,11 +263,11 @@ function Dashboard() {
           </div>
 
           {/* Right Panel - Analytics, Devices, Alerts */}
-          <div className="lg:col-span-1 flex flex-col space-y-4 overflow-hidden">
+          <div className="xl:col-span-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-1">
             {/* Device List */}
-            <div className="bg-white rounded-lg shadow-sm p-4 max-h-[300px] overflow-auto custom-scrollbar">
-              <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <Truck className="w-5 h-5 mr-2 text-blue-600" />
+            <div className="panel-card p-4 max-h-[300px] overflow-auto custom-scrollbar">
+              <h2 className="panel-title mb-3 flex items-center">
+                <Truck className="w-5 h-5 mr-2 text-amber-600" />
                 Devices
               </h2>
               <DeviceList
@@ -278,9 +278,9 @@ function Dashboard() {
             </div>
 
             {/* Analytics */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 overflow-auto custom-scrollbar">
-              <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <Gauge className="w-5 h-5 mr-2 text-green-600" />
+            <div className="panel-card p-4 overflow-auto custom-scrollbar">
+              <h2 className="panel-title mb-3 flex items-center">
+                <Gauge className="w-5 h-5 mr-2 text-emerald-600" />
                 Analytics
               </h2>
               <AnalyticsDashboard
@@ -290,12 +290,12 @@ function Dashboard() {
             </div>
 
             {/* Alerts */}
-            <div className="bg-white rounded-lg shadow-sm p-4 max-h-[250px] overflow-auto custom-scrollbar">
-              <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <Bell className="w-5 h-5 mr-2 text-red-600" />
+            <div className="panel-card p-4 max-h-[260px] overflow-auto custom-scrollbar">
+              <h2 className="panel-title mb-3 flex items-center">
+                <Bell className="w-5 h-5 mr-2 text-rose-600" />
                 Alerts
                 {systemStats.unacknowledged_alerts > 0 && (
-                  <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                  <span className="ml-2 bg-rose-500 text-white text-xs rounded-full px-2 py-1">
                     {systemStats.unacknowledged_alerts}
                   </span>
                 )}
@@ -306,23 +306,83 @@ function Dashboard() {
                 username={user?.username || ''}
                 onAlertChanged={handleAlertChanged}
                 selectedAlertId={selectedAlert?.id || ''}
-                onSelectAlert={setSelectedAlert}
+                onSelectAlert={(alert) => {
+                  setSelectedAlert(alert)
+                  setWorkspaceTab('incident')
+                }}
               />
             </div>
 
-            <RouteReplayTimeline
-              selectedDevice={selectedDevice}
-              onReplayPointChange={setReplayPoint}
-            />
+            <div className="panel-card p-4 overflow-hidden">
+              <h2 className="panel-title mb-3 flex items-center">
+                <ShieldCheck className="w-5 h-5 mr-2 text-sky-600" />
+                Operations Workspace
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+                <WorkspaceTabButton
+                  active={workspaceTab === 'all'}
+                  onClick={() => setWorkspaceTab('all')}
+                  icon={<LayoutGrid className="w-4 h-4" />}
+                  label="All"
+                />
+                <WorkspaceTabButton
+                  active={workspaceTab === 'replay'}
+                  onClick={() => setWorkspaceTab('replay')}
+                  icon={<Route className="w-4 h-4" />}
+                  label="Replay"
+                />
+                <WorkspaceTabButton
+                  active={workspaceTab === 'incident'}
+                  onClick={() => setWorkspaceTab('incident')}
+                  icon={<SearchCheck className="w-4 h-4" />}
+                  label="Incident"
+                />
+                <WorkspaceTabButton
+                  active={workspaceTab === 'workflow'}
+                  onClick={() => setWorkspaceTab('workflow')}
+                  icon={<Wrench className="w-4 h-4" />}
+                  label="Workflow"
+                />
+                <WorkspaceTabButton
+                  active={workspaceTab === 'advanced'}
+                  onClick={() => setWorkspaceTab('advanced')}
+                  icon={<ShieldCheck className="w-4 h-4" />}
+                  label="Advanced"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Tip: Use <strong>All</strong> to see every workspace function together.
+              </p>
 
-            <IncidentWorkspace selectedAlert={selectedAlert} />
-
-            {/* Workflow Controls */}
-            <div className="bg-white rounded-lg shadow-sm p-4 max-h-[260px] overflow-auto custom-scrollbar">
-              <WorkflowPanel role={user?.role} />
+              <div className="max-h-[420px] overflow-auto custom-scrollbar pr-1">
+                {workspaceTab === 'all' && (
+                  <div className="space-y-3">
+                    <RouteReplayTimeline
+                      selectedDevice={selectedDevice}
+                      onReplayPointChange={setReplayPoint}
+                    />
+                    <IncidentWorkspace selectedAlert={selectedAlert} />
+                    <WorkflowPanel role={user?.role} />
+                    <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
+                  </div>
+                )}
+                {workspaceTab === 'replay' && (
+                  <RouteReplayTimeline
+                    selectedDevice={selectedDevice}
+                    onReplayPointChange={setReplayPoint}
+                  />
+                )}
+                {workspaceTab === 'incident' && (
+                  <IncidentWorkspace selectedAlert={selectedAlert} />
+                )}
+                {workspaceTab === 'workflow' && (
+                  <WorkflowPanel role={user?.role} />
+                )}
+                {workspaceTab === 'advanced' && (
+                  <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
+                )}
+              </div>
             </div>
-
-            <AdvancedOpsPanel role={user?.role} selectedDevice={selectedDevice} />
           </div>
         </div>
       </main>
@@ -330,24 +390,42 @@ function Dashboard() {
   )
 }
 
+function WorkspaceTabButton({ active, onClick, icon, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium border transition-colors',
+        active
+          ? 'bg-sky-600 text-white border-sky-600'
+          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
+      ].join(' ')}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  )
+}
+
 // Stat Card Component
 function StatCard({ icon, label, value, color }) {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    red: 'bg-red-50 text-red-600',
+    blue: 'bg-sky-50 text-sky-700',
+    green: 'bg-emerald-50 text-emerald-700',
+    yellow: 'bg-amber-50 text-amber-700',
+    red: 'bg-rose-50 text-rose-700',
   }
 
   return (
-    <div className="bg-white rounded-lg p-3 border border-gray-100">
+    <div className="rounded-xl p-3 bg-white/95 border border-white/80 shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
       <div className="flex items-center space-x-3">
         <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
           {icon}
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{label}</p>
+          <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500 mt-1">{label}</p>
         </div>
       </div>
     </div>
