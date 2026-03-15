@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime
 from typing import Optional, Dict, Any
+import re
 
 from backend.api.schemas import RawGPSPacket
 from backend.services.ingestion_service import ingestion_service
@@ -16,6 +17,7 @@ class StreamListenerService:
         self._protocol = os.getenv("STREAM_PROTOCOL", "udp").strip().lower() or "udp"
         self._host = os.getenv("STREAM_HOST", "0.0.0.0")
         self._port = int(os.getenv("STREAM_PORT", "9100"))
+        self._default_device_id = os.getenv("STREAM_DEFAULT_DEVICE_ID", "gpsfeed_device")
         self._udp_transport = None
         self._tcp_server = None
 
@@ -72,8 +74,11 @@ class StreamListenerService:
         self.received_count += 1
         payload = self._safe_parse_json(message)
         if not payload:
+            # Try NMEA before rejecting
+            payload = self._parse_nmea(message, self._default_device_id)
+        if not payload:
             self.rejected_count += 1
-            self.last_error = "Invalid JSON payload"
+            self.last_error = f"Unrecognised format: {message[:60]!r}"
             return
 
         packet = self._normalize_packet(payload, source=source)
@@ -126,6 +131,97 @@ class StreamListenerService:
             return obj if isinstance(obj, dict) else None
         except Exception:
             return None
+
+    @staticmethod
+    def _nmea_lat_lon(value_str: str, direction: str) -> float:
+        """Convert NMEA ddmm.mmmm / dddmm.mmmm to decimal degrees."""
+        value = float(value_str)
+        degrees = int(value / 100)
+        minutes = value - degrees * 100
+        decimal = degrees + minutes / 60.0
+        if direction in ("S", "W"):
+            decimal = -decimal
+        return decimal
+
+    @classmethod
+    def _parse_nmea(cls, raw: str, default_device_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse NMEA 0183 sentences from GPSFeed+.
+        Supports:
+          $GPRMC  — recommended minimum (lat/lon/speed/heading/time)
+          $GPGGA  — fix data (lat/lon/altitude/accuracy)
+        GPSFeed+ may optionally prepend a device-id prefix:
+          "TRK101,$GPRMC,..." or "$GPRMC,..." (uses STREAM_DEFAULT_DEVICE_ID)
+        """
+        raw = raw.strip()
+        # Strip NMEA checksum (*XX at end)
+        raw = re.sub(r'\*[0-9A-Fa-f]{2}$', '', raw)
+
+        # Try to extract prepended device id: "DEVICE_ID,$GP..."
+        device_id = default_device_id
+        match = re.match(r'^([^$,]+),(\$.+)$', raw)
+        if match:
+            device_id = match.group(1).strip()
+            raw = match.group(2).strip()
+
+        if not raw.startswith('$'):
+            return None
+
+        parts = raw.split(',')
+        sentence_type = parts[0].upper()
+
+        try:
+            if sentence_type == '$GPRMC':
+                # $GPRMC,hhmmss.ss,A,lat,N/S,lon,E/W,speed_knots,heading,ddmmyy,...
+                if len(parts) < 9:
+                    return None
+                if parts[2] != 'A':  # 'V' = void/invalid fix
+                    return None
+                lat = cls._nmea_lat_lon(parts[3], parts[4])
+                lon = cls._nmea_lat_lon(parts[5], parts[6])
+                speed_kmh = float(parts[7]) * 1.852 if parts[7] else None
+                heading = float(parts[8]) if parts[8] else None
+                # Build timestamp from date+time fields
+                time_str = parts[1]   # hhmmss.ss
+                date_str = parts[9] if len(parts) > 9 and parts[9] else None
+                if date_str:
+                    ts = datetime.strptime(date_str + time_str[:6], "%d%m%y%H%M%S").isoformat()
+                else:
+                    ts = datetime.utcnow().isoformat()
+                return {
+                    "device_id": device_id,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "speed": speed_kmh,
+                    "heading": heading,
+                    "timestamp": ts,
+                    "source": "nmea_gprmc",
+                }
+
+            elif sentence_type == '$GPGGA':
+                # $GPGGA,hhmmss.ss,lat,N/S,lon,E/W,fix,sats,hdop,alt,M,...
+                if len(parts) < 10:
+                    return None
+                if parts[6] == '0':  # fix quality 0 = no fix
+                    return None
+                lat = cls._nmea_lat_lon(parts[2], parts[3])
+                lon = cls._nmea_lat_lon(parts[4], parts[5])
+                altitude = float(parts[9]) if parts[9] else None
+                hdop = float(parts[8]) if parts[8] else None  # used as accuracy estimate
+                ts = datetime.utcnow().isoformat()
+                return {
+                    "device_id": device_id,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "altitude": altitude,
+                    "accuracy": hdop,
+                    "timestamp": ts,
+                    "source": "nmea_gpgga",
+                }
+        except (ValueError, IndexError):
+            return None
+
+        return None  # unsupported sentence type
 
     @staticmethod
     def _normalize_packet(payload: Dict[str, Any], source: str) -> Optional[RawGPSPacket]:
