@@ -118,6 +118,26 @@ class DeviceOnboardRequest(BaseModel):
     device_type: Optional[str] = Field("vehicle", max_length=50)
 
 
+class DeviceUpdateRequest(BaseModel):
+    """Schema for updating a managed device."""
+    device_name: Optional[str] = Field(None, max_length=100)
+    device_type: Optional[str] = Field(None, max_length=50)
+    status: Optional[str] = Field(None, max_length=32)
+
+
+class DeviceDeleteResponse(BaseModel):
+    """Response after deleting a device and related telemetry."""
+    device_id: str
+    deleted: bool
+    deleted_locations: int = 0
+    deleted_alerts: int = 0
+    deleted_raw_packets: int = 0
+    deleted_route_plans: int = 0
+    deleted_route_events: int = 0
+    deleted_trips: int = 0
+    deleted_anomalies: int = 0
+
+
 class DeviceCredentialResponse(BaseModel):
     """Schema for one-time credential issuance response."""
     device_id: str

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import MapView from '../components/MapView'
 import DeviceList from '../components/DeviceList'
+import DeviceManagementPanel from '../components/DeviceManagementPanel'
 import AlertPanel from '../components/AlertPanel'
 import AnalyticsDashboard from '../components/AnalyticsDashboard'
 import WorkflowPanel from '../components/WorkflowPanel'
@@ -54,34 +55,40 @@ function Dashboard() {
   const [activeView, setActiveView] = useState('overview')
   const [overviewRailTab, setOverviewRailTab] = useState('devices')
 
+  const fetchData = useCallback(async (showLoading = true, focusDeviceId = null) => {
+    try {
+      if (showLoading) setLoading(true)
+      const [devicesData, alertsData, geofencesData, statsData] = await Promise.all([
+        getDevices(),
+        getAlerts({ limit: 50 }),
+        getGeofences(),
+        getSystemAnalytics(),
+      ])
+
+      setDevices(devicesData)
+      setAlerts(alertsData)
+      setGeofences(geofencesData)
+      setSystemStats(statsData)
+
+      const targetId = focusDeviceId || selectedDevice?.device_id
+      if (targetId) {
+        const refreshedSelected = devicesData.find((device) => device.device_id === targetId) || null
+        setSelectedDevice(refreshedSelected)
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }, [selectedDevice?.device_id])
+
   // Initial data fetch
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const [devicesData, alertsData, geofencesData, statsData] = await Promise.all([
-          getDevices(),
-          getAlerts({ limit: 50 }),
-          getGeofences(),
-          getSystemAnalytics(),
-        ])
-        
-        setDevices(devicesData)
-        setAlerts(alertsData)
-        setGeofences(geofencesData)
-        setSystemStats(statsData)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchData()
     // Refresh data periodically
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   // WebSocket connection
   useEffect(() => {
@@ -366,19 +373,21 @@ function Dashboard() {
 
         {activeView === 'devices' && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 h-[calc(100vh-290px)] min-h-[680px]">
-            <div className="xl:col-span-4 panel-card p-4 overflow-auto custom-scrollbar">
+            <div className="xl:col-span-5 panel-card p-4 overflow-auto custom-scrollbar">
               <h2 className="panel-title mb-3 flex items-center">
                 <Truck className="w-5 h-5 mr-2 text-amber-600" />
-                Device Directory
+                Device Management
               </h2>
-              <DeviceList
+              <DeviceManagementPanel
                 devices={devices}
                 selectedDevice={selectedDevice}
                 onDeviceSelect={handleDeviceSelect}
+                onDevicesChanged={(focusDeviceId) => fetchData(false, focusDeviceId)}
+                role={user?.role}
               />
             </div>
 
-            <div className="xl:col-span-8 flex flex-col gap-4 overflow-hidden">
+            <div className="xl:col-span-7 flex flex-col gap-4 overflow-hidden">
               <div className="panel-card p-4 overflow-auto custom-scrollbar">
                 <h2 className="panel-title mb-3 flex items-center">
                   <Gauge className="w-5 h-5 mr-2 text-emerald-600" />

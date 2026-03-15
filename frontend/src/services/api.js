@@ -80,6 +80,16 @@ export const onboardDevice = async (payload) => {
   return response.data
 }
 
+export const updateDevice = async (deviceId, payload) => {
+  const response = await api.put(`/devices/${deviceId}`, payload)
+  return response.data
+}
+
+export const deleteDevice = async (deviceId) => {
+  const response = await api.delete(`/devices/${deviceId}`)
+  return response.data
+}
+
 export const rotateDeviceCredential = async (deviceId) => {
   const response = await api.post(`/devices/${deviceId}/credentials/rotate`)
   return response.data

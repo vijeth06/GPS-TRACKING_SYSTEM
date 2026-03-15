@@ -16,11 +16,14 @@ from typing import List, Optional
 from backend.api.schemas import (
     GPSDataInput,
     GPSDataResponse,
+    DeviceDeleteResponse,
     DeviceWithLocation,
     DeviceTrailResponse,
     DeviceOnboardRequest,
     DeviceCredentialResponse,
     DeviceCredentialStatusResponse,
+    DeviceResponse,
+    DeviceUpdateRequest,
 )
 from backend.services.auth_dependencies import require_roles
 from backend.services.auth_service import UserRole
@@ -87,6 +90,54 @@ async def get_device(device_id: str):
     if not device:
         raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
     return device
+
+
+@router.put(
+    "/devices/{device_id}",
+    response_model=DeviceResponse,
+    summary="Update managed device",
+)
+async def update_device(
+    device_id: str,
+    payload: DeviceUpdateRequest,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR])),
+):
+    _ = current_user
+    device_service = DeviceService()
+    updated = await device_service.update_device(
+        device_id=device_id,
+        device_name=payload.device_name,
+        device_type=payload.device_type,
+        status=payload.status,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+    return DeviceResponse(
+        id=str(updated["_id"]),
+        device_id=updated["device_id"],
+        device_name=updated.get("device_name"),
+        device_type=updated.get("device_type", "vehicle"),
+        status=updated.get("status", "active"),
+        created_at=updated.get("created_at"),
+        updated_at=updated.get("updated_at"),
+    )
+
+
+@router.delete(
+    "/devices/{device_id}",
+    response_model=DeviceDeleteResponse,
+    summary="Delete managed device",
+)
+async def delete_device(
+    device_id: str,
+    current_user: dict = Depends(require_roles([UserRole.ADMIN])),
+):
+    _ = current_user
+    device_service = DeviceService()
+    result = await device_service.delete_device(device_id)
+    if not result.get("deleted"):
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+    return DeviceDeleteResponse(**result)
 
 
 @router.post(

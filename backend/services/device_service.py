@@ -322,6 +322,56 @@ class DeviceService:
             return_document=True
         )
         return result
+
+    async def update_device(
+        self,
+        device_id: str,
+        device_name: Optional[str] = None,
+        device_type: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Update editable device fields."""
+        updates: Dict[str, Any] = {"updated_at": datetime.utcnow()}
+        if device_name is not None:
+            updates["device_name"] = device_name.strip() or f"Device {device_id}"
+        if device_type is not None:
+            updates["device_type"] = device_type.strip() or "vehicle"
+        if status is not None:
+            updates["status"] = status.strip() or DeviceStatus.ACTIVE.value
+
+        result = await self.db.devices.find_one_and_update(
+            {"device_id": device_id},
+            {"$set": updates},
+            return_document=True,
+        )
+        return result
+
+    async def delete_device(self, device_id: str) -> Dict[str, Any]:
+        """Delete a device and its related telemetry/config documents."""
+        device = await self.get_device(device_id)
+        if not device:
+            return {"device_id": device_id, "deleted": False}
+
+        locations = await self.db.gps_locations.delete_many({"device_id": device_id})
+        alerts = await self.db.alerts.delete_many({"device_id": device_id})
+        raw_packets = await self.db.raw_packets.delete_many({"payload.device_id": device_id})
+        route_plans = await self.db.route_plans.delete_many({"device_id": device_id})
+        route_events = await self.db.route_deviation_events.delete_many({"device_id": device_id})
+        trips = await self.db.trips.delete_many({"device_id": device_id})
+        anomalies = await self.db.anomaly_insights.delete_many({"device_id": device_id})
+        await self.db.devices.delete_one({"device_id": device_id})
+
+        return {
+            "device_id": device_id,
+            "deleted": True,
+            "deleted_locations": locations.deleted_count,
+            "deleted_alerts": alerts.deleted_count,
+            "deleted_raw_packets": raw_packets.deleted_count,
+            "deleted_route_plans": route_plans.deleted_count,
+            "deleted_route_events": route_events.deleted_count,
+            "deleted_trips": trips.deleted_count,
+            "deleted_anomalies": anomalies.deleted_count,
+        }
     
     async def get_online_device_count(self) -> int:
         """Get count of devices that have reported in last 5 minutes."""
