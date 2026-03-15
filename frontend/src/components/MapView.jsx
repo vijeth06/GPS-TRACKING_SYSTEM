@@ -28,22 +28,46 @@ function MapController({ selectedDevice, devices }) {
   const hasInitialFit = useRef(false)
 
   useEffect(() => {
-    if (selectedDevice && selectedDevice.latest_location) {
-      const { latitude, longitude } = selectedDevice.latest_location
-      map.setView([latitude, longitude], 14, { animate: true })
-    } else if (!hasInitialFit.current && devices.length > 0) {
-      // Fit bounds only once on initial load to show all devices
-      const validDevices = devices.filter(
-        (d) => d.latest_location?.latitude && d.latest_location?.longitude
-      )
-      if (validDevices.length > 0) {
-        const bounds = validDevices.map((d) => [
-          d.latest_location.latitude,
-          d.latest_location.longitude,
-        ])
-        map.fitBounds(bounds, { padding: [50, 50] })
-        hasInitialFit.current = true
+    let cancelled = false
+
+    const frame = window.requestAnimationFrame(() => {
+      if (cancelled || !map || !map._loaded) {
+        return
       }
+
+      try {
+        map.stop()
+
+        if (selectedDevice?.latest_location) {
+          const { latitude, longitude } = selectedDevice.latest_location
+          if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+            map.setView([latitude, longitude], Math.max(map.getZoom(), 14), { animate: false })
+          }
+          return
+        }
+
+        if (!hasInitialFit.current && devices.length > 0) {
+          // Fit bounds only once on initial load to show all devices
+          const validDevices = devices.filter(
+            (d) => Number.isFinite(d.latest_location?.latitude) && Number.isFinite(d.latest_location?.longitude)
+          )
+          if (validDevices.length > 0) {
+            const bounds = validDevices.map((d) => [
+              d.latest_location.latitude,
+              d.latest_location.longitude,
+            ])
+            map.fitBounds(bounds, { padding: [50, 50], animate: false })
+            hasInitialFit.current = true
+          }
+        }
+      } catch (error) {
+        console.error('Map recenter failed:', error)
+      }
+    })
+
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
     }
   }, [selectedDevice, devices, map])
 
@@ -107,6 +131,10 @@ function MapView({ devices, selectedDevice, geofences, onDeviceSelect, replayPoi
         zoom={DEFAULT_ZOOM}
         className="h-full w-full"
         zoomControl={true}
+        scrollWheelZoom={false}
+        zoomAnimation={false}
+        markerZoomAnimation={false}
+        fadeAnimation={false}
       >
         {/* OpenStreetMap Tiles */}
         <TileLayer

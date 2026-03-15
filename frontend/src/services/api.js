@@ -287,8 +287,26 @@ export const ingestRawPacket = async (packet, options = {}) => {
 }
 
 export const getStreamListenerStatus = async () => {
-  const response = await api.get('/ingest/stream/status')
-  return response.data
+  try {
+    const response = await api.get('/ingest/stream/status')
+    return response.data
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return {
+        running: false,
+        protocol: 'udp',
+        host: '0.0.0.0',
+        port: 9100,
+        dataset_profile: 'flexible',
+        received_count: 0,
+        parsed_count: 0,
+        rejected_count: 0,
+        last_packet_at: null,
+        last_error: 'Stream listener endpoint not available on current backend build',
+      }
+    }
+    throw error
+  }
 }
 
 export const startStreamListener = async (payload = {}) => {
